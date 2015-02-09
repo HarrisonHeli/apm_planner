@@ -9,6 +9,8 @@ DataSelectionScreen::DataSelectionScreen(QWidget *parent) : QWidget(parent)
     connect(ui.treeWidget, SIGNAL(itemChanged(QTreeWidgetItem*,int)), this, SLOT(onItemChanged(QTreeWidgetItem*,int)));
     connect(ui.clearPushButton,SIGNAL(clicked()),this,SLOT(clearSelectionButtonClicked()));
     ui.treeWidget->setHeaderHidden(true);
+    ui.treeWidget->setColumnWidth(0,50);
+    ui.treeWidget->setColumnWidth(1,50);
 }
 
 DataSelectionScreen::~DataSelectionScreen()
@@ -35,7 +37,7 @@ void DataSelectionScreen::enableItem(QString name)
 {
     QString first = name.split(".")[0];
     QString second = name.split(".")[1];
-    QList<QTreeWidgetItem*> items = ui.treeWidget->findItems(second,Qt::MatchExactly | Qt::MatchRecursive);
+    QList<QTreeWidgetItem*> items = ui.treeWidget->findItems(second,Qt::MatchExactly | Qt::MatchRecursive,1);
     if (items.size() == 0)
     {
         return;
@@ -67,7 +69,7 @@ void DataSelectionScreen::disableItem(QString name)
 {
     QString first = name.split(".")[0];
     QString second = name.split(".")[1];
-    QList<QTreeWidgetItem*> items = ui.treeWidget->findItems(second,Qt::MatchExactly | Qt::MatchRecursive);
+    QList<QTreeWidgetItem*> items = ui.treeWidget->findItems(second,Qt::MatchExactly | Qt::MatchRecursive,1);
     if (items.size() == 0)
     {
         return;
@@ -107,7 +109,7 @@ void DataSelectionScreen::addItem(QString name)
         QList<QTreeWidgetItem*> findlist = ui.treeWidget->findItems(groupname,Qt::MatchContains);
         if (findlist.size() > 0)
         {
-            QTreeWidgetItem *child = new QTreeWidgetItem(QStringList() << shortname);
+            QTreeWidgetItem *child = new QTreeWidgetItem(QStringList() << "" <<  shortname);
             child->setFlags(child->flags() | Qt::ItemIsUserCheckable);
             child->setCheckState(0,Qt::Unchecked);
             findlist[0]->addChild(child);
@@ -117,7 +119,7 @@ void DataSelectionScreen::addItem(QString name)
         {
             QTreeWidgetItem *item = new QTreeWidgetItem(QStringList() << groupname);
             ui.treeWidget->addTopLevelItem(item);
-            QTreeWidgetItem *child = new QTreeWidgetItem(QStringList() << shortname);
+            QTreeWidgetItem *child = new QTreeWidgetItem(QStringList() << "" << shortname);
             child->setFlags(child->flags() | Qt::ItemIsUserCheckable);
             child->setCheckState(0,Qt::Unchecked);
             item->addChild(child);
@@ -131,7 +133,7 @@ void DataSelectionScreen::onItemChanged(QTreeWidgetItem* item,int column)
     {
         return;
     }
-    QString name = item->parent()->text(0) + "." + item->text(0);
+    QString name = item->parent()->text(0) + "." + item->text(1);
     if (item->checkState(0) == Qt::Checked)
     {
         if (!m_enabledList.contains(name))
