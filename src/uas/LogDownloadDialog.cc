@@ -141,7 +141,7 @@ void LogDownloadDialog::cancelButtonClicked()
 
 void LogDownloadDialog::doneButtonClicked()
 {
-    lower();
+    this->accept();
 }
 
 LogDownloadDialog::~LogDownloadDialog()
