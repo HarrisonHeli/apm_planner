@@ -28,35 +28,74 @@ WaypointNavigation::toQPointF(const Waypoint& wp,
     return QPointF(local.X(), local.Y());
 }
 
-/*static*/ QPainterPath
-WaypointNavigation::path(QList<Waypoint*>& waypoints,
-                         mapcontrol::MapGraphicItem& map)
+
+/*static*/
+QPainterPath WaypointNavigation::path(QList<Waypoint*>& waypoints, mapcontrol::MapGraphicItem& map)
 {
+    /* Note: a PATH is a series of graphic lines drawn between a list of given pixel points.
+     * Its is just a graphic and is not used for navigation.
+     */
+    QPainterPath aGraphicPath;
+
     Q_ASSERT(waypoints.size() > 0);
+    if (waypoints.size() <= 1) return aGraphicPath; // cant draw anything with only one point
 
-    Waypoint* home = waypoints[0];
-    QPainterPath path(toQPointF(*home, map));
+    /* WayPointsActionFilter is a list of waypoint action types that acts as a search filter.
+     * If a waypoint is not on this list we wont draw a path to it.
+     * We are looking at the "action" property of the waypoint object.
+     */
 
-    if (waypoints.size() == 1)
-        return path;
-
-    QList<int> wayPointsWithPath; // This QList of waypoints for a path to be drawn.
-    wayPointsWithPath << MAV_CMD_NAV_WAYPOINT // Here corresponding Waypoints can be added or removed.
+    QList<int> WayPointsActionFilter; // This QList of waypoint actions to filter for.
+    WayPointsActionFilter << MAV_CMD_NAV_WAYPOINT // Here corresponding Waypoints actions can be added.
                       << MAV_CMD_NAV_LOITER_UNLIM
                       << MAV_CMD_NAV_LOITER_TURNS
                       << MAV_CMD_NAV_LOITER_TIME
-                      << MAV_CMD_NAV_LAND
-                      << MAV_CMD_NAV_TAKEOFF;
+                      << MAV_CMD_NAV_LAND;
+                      //<< MAV_CMD_NAV_TAKEOFF;
+
+    /* The first waypoint is normaly the HOME waypoint. its default value is Zero Lat, Zero Long
+     * The Home waypoint is changed to the location that the UAV is at when the UAV is ARMED.
+     *
+     * When doing flight planing we dont have a ARMED UAV so the HOME waypoint is always set to the
+     * equator off the coast of Africa. It does not make sence to draw the path from the HOME location.
+     *
+     * We should use the UASManager to test if the UAV is armed but it is getting messy and dificult to pass that
+     * information to here.
+     * So if, the LAT and LONG are both zero deg, we can assume the UAV is not armed and can drop the
+     * HOME waypoint from the graphic path.
+     *
+     * If the UAV is connected and ARMED then the loaction is valid and should be shown.
+     */
+
+    int IndexToNextWaypoint = 0; // Used to link this for loop to the next for loop
+
+    for ( int i = 0; i < waypoints.size(); ++ i)
+        {
+        const Waypoint& aWaypoint = *waypoints[i];
+        if (WayPointsActionFilter.contains(aWaypoint.getAction())) // Apply the waypoint action filter
+            {
+            if (!((aWaypoint.getLatitude() == 0) && (aWaypoint.getLongitude() == 0)))
+                {
+                 QPointF aGraphicPoint = toQPointF (aWaypoint, map);
+                 aGraphicPath.moveTo(aGraphicPoint);
+                 IndexToNextWaypoint = i + 1;
+                 break; //exit the for loop
+                }
+            }  //if Way
+        } //for
+
+
 
     QPointF m1; // spline velocity at destination
-    for (int i = 1; i < waypoints.size(); ++i)
+
+    for (int i = IndexToNextWaypoint ; i < waypoints.size(); ++i)
     {
         const Waypoint& wp1 = *waypoints[i];
-        QPointF p1 = toQPointF(wp1, map);
+        QPointF p1 = toQPointF(wp1, map);   //QPointF is a pixle point on the map.
 
-        if (wayPointsWithPath.contains(wp1.getAction()))
+        if (WayPointsActionFilter.contains(wp1.getAction())) // Apply the waypoint action filter
         {
-            path.lineTo(p1);
+            aGraphicPath.lineTo(p1);
             continue;
         }
 
@@ -150,9 +189,9 @@ WaypointNavigation::path(QList<Waypoint*>& waypoints,
         // draw spline
         for (float t = 0.0f; t <= 1.0f; t += 1/100.0f) // update_spline() called at 100Hz
         {
-            path.lineTo(p(t, p0, m0, p1, m1));
+            aGraphicPath.lineTo(p(t, p0, m0, p1, m1));
         }
     }
 
-    return path;
+    return aGraphicPath;
 }

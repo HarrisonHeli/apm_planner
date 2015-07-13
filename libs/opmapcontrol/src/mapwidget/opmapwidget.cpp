@@ -43,8 +43,9 @@ namespace mapcontrol
         showuav(false),
         showhome(false),
         diagTimer(0),
-        showDiag(false),
-        diagGraphItem(0)
+        showDiag(true),
+        diagGraphItem(0),
+        useOpenGL(false) //Was missing causing random values - AH
     {
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         core=new internals::Core;

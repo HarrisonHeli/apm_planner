@@ -38,7 +38,7 @@ QGCMapWidget::QGCMapWidget(QWidget *parent) :
     loadSettings();
 
     //handy for debugging:
-    //this->SetShowTileGridLines(true);
+    this->SetShowTileGridLines(true);
 
     this->setContextMenuPolicy(Qt::ActionsContextMenu);
 
@@ -229,7 +229,7 @@ void QGCMapWidget::showEvent(QShowEvent* event)
             addUAS(uas);
         }
 
-        //this->SetUseOpenGL(true);
+       // this->SetUseOpenGL(true);
         SetMouseWheelZoomType(internals::MouseWheelZoomType::MousePositionWithoutCenter);	    // set how the mouse wheel zoom functions
         SetFollowMouse(true);				    // we want a contiuous mouse position reading
 
@@ -840,7 +840,6 @@ void QGCMapWidget::redrawWaypointLines(int uas)
     // Delete existing waypoint lines
     foreach (QGraphicsItem* item, group->childItems())
     {
-        QLOG_TRACE() << "DELETE EXISTING WAYPOINT LINES" << item;
         delete item;
     }
 

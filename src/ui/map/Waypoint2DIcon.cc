@@ -305,20 +305,35 @@ void Waypoint2DIcon::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     penBlack.setWidth(4);
     pen.setColor(color);
 
+    //Draw a alignment radius around the wp for spacing when doing grids
+    bool showAlignmentRadius = true;
+    double AlignmentRadius = 23; //meters
+
+    if (waypoint && showAlignmentRadius)
+    {
+        QPen penDash(Qt::blue);
+        penDash.setWidth(1);
+        penDash.setStyle(Qt::DotLine);
+        const int AlignmentRadiusPixels = map->metersToPixels(AlignmentRadius, Coord());
+        painter->setPen(penDash);
+        painter->drawEllipse(QPointF(0, 0), AlignmentRadiusPixels, AlignmentRadiusPixels);
+
+    }
+
     if (waypoint && showAcceptanceRadius &&
            ( (waypoint->getAction() == (int)MAV_CMD_NAV_WAYPOINT)
             ||(waypoint->getAction() == (int)MAV_CMD_NAV_SPLINE_WAYPOINT)) )
     {
-        QPen redPen = QPen(pen);
-        redPen.setColor(Qt::yellow);
-        redPen.setWidth(1);
-        painter->setPen(redPen);
+        QPen yellowPen = QPen(pen);
+        yellowPen.setColor(Qt::yellow);
+        yellowPen.setWidth(1);
+        painter->setPen(yellowPen);
         const int acceptance = map->metersToPixels(waypoint->getAcceptanceRadius(), Coord());
         if (acceptance <= 0)
             return;
         painter->setPen(penBlack);
         painter->drawEllipse(QPointF(0, 0), acceptance, acceptance);
-        painter->setPen(redPen);
+        painter->setPen(yellowPen);
         painter->drawEllipse(QPointF(0, 0), acceptance, acceptance);
     }
     if ((waypoint) && ((waypoint->getAction() == (int)MAV_CMD_NAV_LOITER_UNLIM) || (waypoint->getAction() == (int)MAV_CMD_NAV_LOITER_TIME) || (waypoint->getAction() == (int)MAV_CMD_NAV_LOITER_TURNS)))
