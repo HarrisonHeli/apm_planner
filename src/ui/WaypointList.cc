@@ -41,6 +41,7 @@ This file is part of the PIXHAWK project
 #include <QMessageBox>
 #include <QMouseEvent>
 #include "LinkManager.h"
+#include <Waypoint.h>
 
 WaypointList::WaypointList(QWidget *parent, UASWaypointManager* wpm) :
     QWidget(parent),
@@ -277,6 +278,9 @@ void WaypointList::loadWaypointsDialogAccepted()
         return;
     }
     WPM->loadWaypoints(dialog->selectedFiles().at(0));
+    double Distance = getTotalDistanceInMeters();
+    updateStatusLabel("Mission Distance:" + QString::number(Distance, 'f', 2) + " m");
+
 }
 
 void WaypointList::transmit()
@@ -460,6 +464,8 @@ void WaypointList::currentWaypointEditableChanged(quint16 seq)
                 }
             }
         }
+        double Distance = getTotalDistanceInMeters();
+        updateStatusLabel("Mission Distance:" + QString::number(Distance, 'f', 2) + " m");
 }
 
 // Update waypointViews to correctly indicate the new current waypoint
@@ -487,6 +493,8 @@ void WaypointList::currentWaypointViewOnlyChanged(quint16 seq)
             }
         }
     }
+    double Distance = getTotalDistanceInMeters();
+    updateStatusLabel("Mission Distance:" + QString::number(Distance, 'f', 2) + " m");
 }
 
 void WaypointList::updateWaypointEditable(int uas, Waypoint* wp)
@@ -553,6 +561,8 @@ void WaypointList::waypointViewOnlyListChanged()
     }
     setUpdatesEnabled(true);
     loadFileGlobalWP = false;
+    double Distance = getTotalDistanceInMeters();
+    updateStatusLabel("Mission Distance:" + QString::number(Distance, 'f', 2) + " m");
 
     m_ui->tabWidget->setCurrentIndex(1);
 
@@ -612,6 +622,8 @@ void WaypointList::waypointEditableListChanged()
     }
     setUpdatesEnabled(true);
     loadFileGlobalWP = false;
+    double Distance = getTotalDistanceInMeters();
+    updateStatusLabel("Mission Distance:" + QString::number(Distance, 'f', 2) + " m");
 
 }
 
@@ -690,8 +702,11 @@ void WaypointList::moveBottom(Waypoint* wp)
 void WaypointList::removeWaypoint(Waypoint* wp)
 {
     if (wp && (wp->getId() > 0)){ // APM use WP0 as home so do not remove it
-        WPM->removeWaypoint(wp->getId());
+
+      WPM->removeWaypoint(wp->getId());
     }
+    double Distance = getTotalDistanceInMeters();
+    updateStatusLabel("Mission Distance:" + QString::number(Distance, 'f', 2) + " m");
 }
 
 void WaypointList::changeEvent(QEvent *e)
@@ -741,6 +756,33 @@ void WaypointList::wpRadiusChanged(double radius)
     if (m_uas){
         m_uas->setParameter(1,"WPNAV_RADIUS", radius*100.0); // WPNAV_RADIUS is in cm
     }
+}
+
+double WaypointList::getTotalDistanceInMeters()
+{
+    //returns the total distance in meters for the path along all the waypoints in the list
+    // Get list
+    const QList<Waypoint *> &waypoints = WPM->getNavTypeWaypointList();
+
+    double TotalDistance = 0;
+
+    for (int i = 1; i < waypoints.count(); i++)
+        {
+        TotalDistance = TotalDistance + getDistanceinMeters( waypoints[i-1] , waypoints[i] );
+        }
+
+    return TotalDistance;
+}
+
+double WaypointList::getDistanceinMeters(Waypoint* FirstWaypoint, Waypoint* SecondWaypoint)
+{
+     double R = 6371000; // radious of the earth in meters - just a rough calculation
+     double dLat = (SecondWaypoint->getLatitude() - FirstWaypoint->getLatitude() )* (M_PI / 180);
+     double dLon = (SecondWaypoint->getLongitude() - FirstWaypoint->getLongitude() )* (M_PI / 180);
+     double a = sin(dLat/2) * sin(dLat/2) + cos(FirstWaypoint->getLatitude() * (M_PI / 180)) * cos(SecondWaypoint->getLatitude() * (M_PI / 180)) * sin(dLon/2) * sin(dLon/2);
+     double c = 2 * atan2(sqrt(a), sqrt(1-a));
+     double d = R * c;
+     return d;
 }
 
 void WaypointList::parameterChanged(int uas, int component, QString parameterName, QVariant value)

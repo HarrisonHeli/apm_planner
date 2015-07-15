@@ -38,7 +38,7 @@ QGCMapWidget::QGCMapWidget(QWidget *parent) :
     loadSettings();
 
     //handy for debugging:
-    this->SetShowTileGridLines(true);
+    //this->SetShowTileGridLines(true);
 
     this->setContextMenuPolicy(Qt::ActionsContextMenu);
 
@@ -733,7 +733,7 @@ void QGCMapWidget::handleMapWaypointEdit(mapcontrol::WayPointItem* waypoint)
  */
 void QGCMapWidget::updateWaypoint(int uas, Waypoint* wp)
 {
-    QLOG_DEBUG() << __FILE__ << __LINE__ << "UPDATING WP FUNCTION CALLED";
+    //QLOG_DEBUG() << __FILE__ << __LINE__ << "UPDATING WP FUNCTION CALLED";
     // Source of the event was in this widget, do nothing
     if (firingWaypointChange == wp) {
         return;

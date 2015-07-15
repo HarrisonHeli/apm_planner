@@ -121,6 +121,8 @@ public slots:
     void parameterChanged(int uas, int component, QString parameterName, QVariant value);
 
     void wpRadiusChanged(double radius);
+    double getTotalDistanceInMeters();
+    double getDistanceinMeters(Waypoint* wp1, Waypoint* wp2);
 
 signals:
     void clearPathclicked();

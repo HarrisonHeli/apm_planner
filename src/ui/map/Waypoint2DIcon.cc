@@ -307,7 +307,8 @@ void Waypoint2DIcon::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
 
     //Draw a alignment radius around the wp for spacing when doing grids
     bool showAlignmentRadius = true;
-    double AlignmentRadius = 23; //meters
+    double AlignmentRadius = 30; //meters
+    double AlignmentRadiusLow = 15; //meters
 
     if (waypoint && showAlignmentRadius)
     {
@@ -315,8 +316,10 @@ void Waypoint2DIcon::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
         penDash.setWidth(1);
         penDash.setStyle(Qt::DotLine);
         const int AlignmentRadiusPixels = map->metersToPixels(AlignmentRadius, Coord());
+        const int AlignmentRadiusLowPixels = map->metersToPixels(AlignmentRadiusLow, Coord());
         painter->setPen(penDash);
         painter->drawEllipse(QPointF(0, 0), AlignmentRadiusPixels, AlignmentRadiusPixels);
+        painter->drawEllipse(QPointF(0, 0), AlignmentRadiusLowPixels, AlignmentRadiusLowPixels);
 
     }
 

@@ -135,14 +135,15 @@ void MissionElevationDisplay::activeUASSet(UASInterface *uas)
 void MissionElevationDisplay::updateWaypoint(int uasId, Waypoint *waypoint)
 {
     Q_UNUSED(uasId);
-    QLOG_DEBUG() << "Elevation Waypoint update: " << waypoint->getId()
-                 << " alt:" << waypoint->getAltitude();
+    //QLOG_DEBUG() << "Elevation Waypoint update: " << waypoint->getId()
+    //             << " alt:" << waypoint->getAltitude();
 
     if(m_waypointList.count() >= 2){
         Waypoint* oldWp = m_waypointList.value(waypoint->getId());
         if (m_elevationShown && ((oldWp->getLatitude() != waypoint->getLatitude())
            || (oldWp->getLongitude() != waypoint->getLongitude()))){
             // Waypoint Moved, so need to refresh elevation.
+
             ui->refreshButton->setText("Refresh Elevation");
             ui->refreshButton->setEnabled(true);
         }
@@ -166,7 +167,10 @@ void MissionElevationDisplay::currentWaypointChanged(quint16 waypointId)
 
 void MissionElevationDisplay::updateDisplay()
 {
+    if (this->isVisible() == false ) return;
+
     QLOG_DEBUG() << "updateElevationDisplay";
+
 
     QList<Waypoint*> list = m_uasWaypointMgr->getGlobalFrameAndNavTypeWaypointList(false);
     m_waypointList.clear();
