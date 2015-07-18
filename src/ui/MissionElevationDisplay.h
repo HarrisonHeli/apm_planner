@@ -25,6 +25,7 @@ This file is part of the APM_PLANNER project
 
 #include <QWidget>
 #include <QMap>
+#include <QTimer>
 
 class QCustomPlot;
 class UASInterface;
@@ -76,6 +77,9 @@ private:
     bool m_useHomeAltOffset;
     double m_homeAltOffset;
     bool m_elevationShown;
+
+    QTimer m_waypointUpdateTimer;
+    QTimer *ptr_to_timer;
 };
 
 #endif // MISSONELEVATIONDISPLAY_H

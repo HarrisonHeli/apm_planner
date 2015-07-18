@@ -86,6 +86,11 @@ MissionElevationDisplay::MissionElevationDisplay(QWidget *parent) :
     activeUASSet(UASManager::instance()->getActiveUAS());
 
     connect(ui->infoButton, SIGNAL(clicked()), this, SLOT(showInfoBox()));
+
+    ptr_to_timer = &m_waypointUpdateTimer;
+    connect(ptr_to_timer, SIGNAL(timeout()), this, SLOT(updateDisplay()));
+
+
 }
 
 MissionElevationDisplay::~MissionElevationDisplay()
@@ -135,6 +140,7 @@ void MissionElevationDisplay::activeUASSet(UASInterface *uas)
 void MissionElevationDisplay::updateWaypoint(int uasId, Waypoint *waypoint)
 {
     Q_UNUSED(uasId);
+
     //QLOG_DEBUG() << "Elevation Waypoint update: " << waypoint->getId()
     //             << " alt:" << waypoint->getAltitude();
 
@@ -149,7 +155,15 @@ void MissionElevationDisplay::updateWaypoint(int uasId, Waypoint *waypoint)
         }
     }
 
-    updateDisplay();
+    /* The update of the display can be called repetedly when a waypoint is draged by a mouse and will lock up the application thread.
+    * So a delay of 1 second is introduced to filter out repeted and unnessary updates.
+    */
+
+    QLOG_DEBUG() << "Timer: " << m_waypointUpdateTimer.remainingTime();
+    m_waypointUpdateTimer.start(1000);
+
+
+    //updateDisplay(); //Old code as example
 }
 
 void MissionElevationDisplay::sampleValueChanged()
@@ -167,9 +181,12 @@ void MissionElevationDisplay::currentWaypointChanged(quint16 waypointId)
 
 void MissionElevationDisplay::updateDisplay()
 {
+    m_waypointUpdateTimer.stop();
+
     if (this->isVisible() == false ) return;
 
     QLOG_DEBUG() << "updateElevationDisplay";
+
 
 
     QList<Waypoint*> list = m_uasWaypointMgr->getGlobalFrameAndNavTypeWaypointList(false);
