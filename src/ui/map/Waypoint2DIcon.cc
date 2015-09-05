@@ -305,23 +305,49 @@ void Waypoint2DIcon::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     penBlack.setWidth(4);
     pen.setColor(color);
 
-    //Draw a alignment radius around the wp for spacing when doing grids
-    bool showAlignmentRadius = true;
-    double AlignmentRadius = 30; //meters
-    double AlignmentRadiusLow = 15; //meters
+    //Draw a safety radius around the wp to show the minimum distance the aircraft can be from people
+    bool showSafetyRadius = true;
+    double SafetyRadius = 30; //meters
 
-    if (waypoint && showAlignmentRadius)
+    if (waypoint && showSafetyRadius)
     {
         QPen penDash(Qt::blue);
         penDash.setWidth(1);
         penDash.setStyle(Qt::DotLine);
-        const int AlignmentRadiusPixels = map->metersToPixels(AlignmentRadius, Coord());
-        const int AlignmentRadiusLowPixels = map->metersToPixels(AlignmentRadiusLow, Coord());
+        const int SafetyRadiusPixels = map->metersToPixels(SafetyRadius, Coord());
+
         painter->setPen(penDash);
-        painter->drawEllipse(QPointF(0, 0), AlignmentRadiusPixels, AlignmentRadiusPixels);
-        painter->drawEllipse(QPointF(0, 0), AlignmentRadiusLowPixels, AlignmentRadiusLowPixels);
+        painter->drawEllipse(QPointF(0, 0), SafetyRadiusPixels, SafetyRadiusPixels);
+        painter->drawEllipse(QPointF(0, 0), SafetyRadiusPixels/2, SafetyRadiusPixels/2);
 
     }
+
+    bool showCameraFootprint = true;
+    double X_CAMERA_FOOTPRINT_METERS = 60; //meters
+    double Y_CAMERA_FOOTPRINT_METERS = 30; //meters
+    double X_CAMERA_OVERLAP_PERCENT = 60; //percent
+    double Y_CAMERA_OVERLAP_PERCENT = 60; //percent
+
+    if (waypoint && showCameraFootprint)
+    {
+        QPen penDashDot(Qt::gray);
+        penDashDot.setWidth(1);
+        penDashDot.setStyle(Qt::DashDotDotLine);
+        const int X_CameraFootprintPixels = map->metersToPixels(X_CAMERA_FOOTPRINT_METERS, Coord());
+        const int Y_CameraFootprintPixels = map->metersToPixels(Y_CAMERA_FOOTPRINT_METERS, Coord());
+
+        const int X_CameraOverlapPixels = map->metersToPixels(X_CAMERA_FOOTPRINT_METERS * (X_CAMERA_OVERLAP_PERCENT/100), Coord());
+        const int Y_CameraOverlapPixels = map->metersToPixels(Y_CAMERA_FOOTPRINT_METERS * (Y_CAMERA_OVERLAP_PERCENT/100) , Coord());
+
+
+        painter->setPen(penDashDot);
+
+        painter->rotate(waypoint->getYaw());
+        painter->drawRect((0 - X_CameraFootprintPixels),(0 - Y_CameraFootprintPixels), (X_CameraFootprintPixels*2),(Y_CameraFootprintPixels*2));
+
+
+    }
+
 
     if (waypoint && showAcceptanceRadius &&
            ( (waypoint->getAction() == (int)MAV_CMD_NAV_WAYPOINT)
