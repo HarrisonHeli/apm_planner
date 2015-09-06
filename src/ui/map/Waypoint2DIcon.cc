@@ -292,6 +292,10 @@ void Waypoint2DIcon::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
 {
     Q_UNUSED(option);
     Q_UNUSED(widget);
+
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setRenderHint(QPainter::HighQualityAntialiasing, true);
+
     QPen pen = painter->pen();
     pen.setWidth(2);
     painter->drawPixmap(-picture.width()/2,-picture.height()/2,picture);
