@@ -37,6 +37,7 @@ class Radio3DRSettings;
 class Radio3DRConfig : public QWidget
 {
     Q_OBJECT
+    static const int RADIO3DR_UPDATE_PORT_TIME = 3000;
 
     enum State { none, writeRadioSettings, resetRadioSettings, complete};
     
@@ -82,7 +83,7 @@ private:
     void resetUI();
     void initConnections();
     void addBaudComboBoxConfig(QComboBox *comboBox);
-    void fillPortsInfo(QComboBox &comboxBox);
+    void fillPortsInfo(QComboBox &comboBox);
     void addRadioBaudComboBoxConfig(QComboBox &comboBox);
     void addRadioAirBaudComboBoxConfig(QComboBox &comboBox);
     void addTxPowerComboBoxConfig(QComboBox &comboBox);
@@ -98,7 +99,7 @@ private:
     SerialSettings m_settings;
     Radio3DREeprom m_newRadioSettings;
     Radio3DREeprom m_remoteRadioSettings;
-    QPointer<QTimer> m_timer;
+    QTimer m_timer;
     QPointer<Radio3DRSettings> m_radioSettings;
     State m_state;
 };

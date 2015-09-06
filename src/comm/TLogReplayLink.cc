@@ -25,6 +25,16 @@ QString TLogReplayLink::getName() const
 {
     return "AP2SimulationLink";
 }
+
+QString TLogReplayLink::getShortName() const
+{
+    return "AP2SimLink";
+}
+
+QString TLogReplayLink::getDetail() const
+{
+    return "sim";
+}
 void TLogReplayLink::requestReset()
 {
 
@@ -265,6 +275,7 @@ void TLogReplayLink::run()
                             msleep(1);
                         }
                         uas->receiveMessage(this,message);
+                        LinkManager::instance()->getUasObject(message.sysid)->messageReceived(this,message);
                         m_mavlinkDecoder->receiveMessage(this,message);
                         if (m_mavlinkInspector)
                         {

@@ -42,7 +42,6 @@ This file is part of the APM_PLANNER project
 #include <QIntValidator>
 #include <QLineEdit>
 #include <QPointer>
-#include <QTimer>
 
 QT_USE_NAMESPACE
 
@@ -68,8 +67,7 @@ SettingsDialog::SettingsDialog(QWidget *parent) :
     updateSettings();
 
     //Keep refreshing the serial port list
-    m_timer = new QTimer(this);
-    connect(m_timer,SIGNAL(timeout()),this,SLOT(populateSerialPorts()));
+    connect(&m_timer,SIGNAL(timeout()),this,SLOT(populateSerialPorts()));
 }
 
 SettingsDialog::~SettingsDialog()
@@ -183,13 +181,11 @@ void SettingsDialog::fillPortsInfo(QComboBox &comboBox)
         if (comboBox.itemText(i) == current)
         {
             comboBox.setCurrentIndex(i);
-            setLink(comboBox.currentIndex());
-            connect(&comboBox,SIGNAL(currentIndexChanged(int)),this,SLOT(setLink(int)));
-            return;
+            break;
         }
     }
-    connect(&comboBox,SIGNAL(currentIndexChanged(int)),this,SLOT(setLink(int)));
     setLink(comboBox.currentIndex());
+    connect(&comboBox,SIGNAL(currentIndexChanged(int)),this,SLOT(setLink(int)));
 }
 
 void SettingsDialog::setLink(int index)
@@ -208,14 +204,14 @@ void SettingsDialog::showEvent(QShowEvent *event)
 {
     Q_UNUSED(event);
     // Start refresh Timer
-    m_timer->start(2000);
+    m_timer.start(2000);
 }
 
 void SettingsDialog::hideEvent(QHideEvent *event)
 {
     Q_UNUSED(event);
     // Stop the port list refeshing
-    m_timer->stop();
+    m_timer.stop();
 
 }
 

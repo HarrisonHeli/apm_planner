@@ -52,11 +52,13 @@ This file is part of the QGROUNDCONTROL project
 #include "UASRawStatusView.h"
 #include "PrimaryFlightDisplay.h"
 #include "PrimaryFlightDisplayQML.h"
+#include "VibrationMonitor.h"
 #include "ApmToolBar.h"
 #include "SerialSettingsDialog.h"
 #include "TerminalConsole.h"
 #include "AP2DataPlot2D.h"
 #include "MissionElevationDisplay.h"
+#include "LinkManagerFactory.h"
 
 #ifdef QGC_OSG_ENABLED
 #include "Q3DWidgetFactory.h"
@@ -119,6 +121,11 @@ bool MainWindow::dockWidgetTitleBarsEnabled()
 bool MainWindow::lowPowerModeEnabled()
 {
     return lowPowerMode;
+}
+
+bool MainWindow::autoProxyModeEnabled()
+{
+    return autoProxyMode;
 }
 
 /**
@@ -236,6 +243,7 @@ MainWindow::MainWindow(QWidget *parent):
     m_apmToolBar->setConfigTuningViewAction(ui.actionSoftwareConfig);
     m_apmToolBar->setPlotViewAction(ui.actionEngineersView);
     m_apmToolBar->setSimulationViewAction(ui.actionSimulation_View);
+    m_apmToolBar->setDonateViewAction(ui.actionDonate);
 
     connect(ui.actionAdvanced_Mode, SIGNAL(triggered(bool)), m_apmToolBar, SLOT(checkAdvancedMode(bool)));
 
@@ -272,6 +280,9 @@ MainWindow::MainWindow(QWidget *parent):
 
     // Set low power mode
     enableLowPowerMode(lowPowerMode);
+
+    // Set Automatic use of system Proxies
+    enableAutoProxyMode(autoProxyMode);
 
     // Initialize window state
     windowStateVal = windowState();
@@ -730,6 +741,13 @@ void MainWindow::buildCommonWidgets()
     }
 #endif
 
+    { // Adds the Vibration Monitor Tool
+        QAction* tempAction = ui.menuTools->addAction(tr("Vibration Monitor"));
+        tempAction->setCheckable(true);
+        connect(tempAction,SIGNAL(triggered(bool)),this, SLOT(showTool(bool)));
+        menuToDockNameMap[tempAction] = "VIBRATION_MONITOR_DOCKWIDGET";
+    }
+
     QGCTabbedInfoView *infoview = new QGCTabbedInfoView(this);
     infoview->addSource(mavlinkDecoder);
     createDockWidget(pilotView,infoview,tr("Info View"),"UAS_INFO_INFOVIEW_DOCKWIDGET",VIEW_FLIGHT,Qt::LeftDockWidgetArea);
@@ -872,6 +890,10 @@ void MainWindow::loadDockWidget(QString name)
     else if (name == "MISSION_ELEVATION_DOCKWIDGET")
     {
         createDockWidget(centerStack->currentWidget(),new MissionElevationDisplay(this),tr("Mission Elevation"),"MISSION_ELEVATION_DOCKWIDGET",currentView,Qt::TopDockWidgetArea);
+    }
+    else if (name == "VIBRATION_MONITOR_DOCKWIDGET")
+    {
+        createDockWidget(centerStack->currentWidget(),new VibrationMonitor(this),tr("Vibration Monitor"),"VIBRATION_MONITOR_DOCKWIDGET",currentView,Qt::RightDockWidgetArea);
     }
     else if (name == "MAVLINK_INSPECTOR_DOCKWIDGET")
     {
@@ -1234,6 +1256,7 @@ void MainWindow::loadSettings()
     currentStyle = (QGC_MAINWINDOW_STYLE)settings.value("CURRENT_STYLE", QGC_MAINWINDOW_STYLE_OUTDOOR).toInt();
     currentView= static_cast<VIEW_SECTIONS>(settings.value("CURRENT_VIEW", VIEW_FLIGHT).toInt());
     lowPowerMode = settings.value("LOW_POWER_MODE", false).toBool();
+    autoProxyMode = settings.value("AUTO_PROXY_MODE", false).toBool();
     dockWidgetTitleBarEnabled = settings.value("DOCK_WIDGET_TITLEBARS", true).toBool();
     isAdvancedMode = settings.value("ADVANCED_MODE", false).toBool();
     enableHeartbeat(settings.value("HEARTBEATS_ENABLED",true).toBool());
@@ -1247,6 +1270,7 @@ void MainWindow::storeSettings()
     settings.setValue("AUTO_RECONNECT", autoReconnect);
     settings.setValue("CURRENT_STYLE", currentStyle);
     settings.setValue("LOW_POWER_MODE", lowPowerMode);
+    settings.setValue("AUTO_PROXY_MODE", autoProxyMode);
     settings.setValue("ADVANCED_MODE", isAdvancedMode);
     settings.setValue("HEARTBEATS_ENABLED",m_heartbeatEnabled);
     settings.endGroup();
@@ -1361,6 +1385,41 @@ void MainWindow::enableDockWidgetTitleBars(bool enabled)
 void MainWindow::enableAutoReconnect(bool enabled)
 {
     autoReconnect = enabled;
+}
+
+void MainWindow::enableAutoProxyMode(bool enabled)
+{
+    if (enabled)
+    {
+        QLOG_INFO() << "NETWORK_PROXY:" << "Attempting to enable System Network Proxies";
+        QNetworkProxyFactory::setUseSystemConfiguration(true);
+
+        // Check for proxy used for well known external URL
+        QNetworkProxyQuery npq(QUrl("http://www.google.com"));
+        QList<QNetworkProxy> listOfProxies = QNetworkProxyFactory::systemProxyForQuery(npq);
+
+        if (listOfProxies.size() &&
+                QNetworkProxy::NoProxy != listOfProxies[0].type())
+        {
+            QLOG_INFO() << "NETWORK_PROXY:" << "System Proxies in use for external urls";
+            autoProxyMode = enabled;
+        }
+        else
+        {
+            QLOG_ERROR() << "NETWORK_PROXY:" << "No System Proxies found in environment";
+            QNetworkProxyFactory::setUseSystemConfiguration(false);
+        }
+    }
+    else
+    {
+        QLOG_INFO() << "NETWORK_PROXY:" << "Disabling System Network Proxies";
+        QNetworkProxyFactory::setUseSystemConfiguration(false);
+
+        autoProxyMode = enabled;
+    }
+
+    // Ensure the checkbox is in-sync with the current value
+    emit autoProxyChanged(autoProxyMode);
 }
 
 void MainWindow::loadNativeStyle()
@@ -1610,9 +1669,11 @@ void MainWindow::connectCommonActions()
     ui.actionSerial->setData(LinkInterface::SERIAL_LINK);
     ui.actionTCP->setData(LinkInterface::TCP_LINK);
     ui.actionUDP->setData(LinkInterface::UDP_LINK);
+    ui.actionUDPClient->setData(LinkInterface::UDP_CLIENT_LINK);
     connect(ui.actionSerial,SIGNAL(triggered()),this,SLOT(addLink()));
     connect(ui.actionTCP,SIGNAL(triggered()),this,SLOT(addLink()));
     connect(ui.actionUDP,SIGNAL(triggered()),this,SLOT(addLink()));
+    connect(ui.actionUDPClient,SIGNAL(triggered()),this,SLOT(addLink()));
     connect(ui.actionAdvanced_Mode,SIGNAL(triggered(bool)),this,SLOT(setAdvancedMode(bool)));
 
     // Connect internal actions
@@ -1784,15 +1845,19 @@ void MainWindow::addLink()
     int newid = 0;
     if (send->data() == LinkInterface::SERIAL_LINK)
     {
-        newid = LinkManager::instance()->addSerialConnection();
+        newid = LinkManagerFactory::addSerialConnection();
     }
     else if (send->data() == LinkInterface::TCP_LINK)
     {
-        newid = LinkManager::instance()->addTcpConnection(QHostAddress::LocalHost,5555,false);
+        newid = LinkManagerFactory::addTcpConnection(QHostAddress::LocalHost, "", 5760, false);
     }
     else if (send->data() == LinkInterface::UDP_LINK)
     {
-        newid = LinkManager::instance()->addUdpConnection(QHostAddress::LocalHost,5555);
+        newid = LinkManagerFactory::addUdpConnection(QHostAddress::LocalHost,14550);
+    }
+    else if (send->data() == LinkInterface::UDP_CLIENT_LINK)
+    {
+        newid = LinkManagerFactory::addUdpClientConnection(QHostAddress("192.168.4.1"),14550);
     }
     addLink(newid);
     for (int i=0;i<ui.menuNetwork->actions().size();i++)
@@ -1831,7 +1896,11 @@ void MainWindow::addLink(int linkid)
 
 void MainWindow::linkError(int linkid,QString errorstring)
 {
-    QMessageBox::information(this,"Link Error",errorstring);
+    QWidget* parent = QApplication::activeWindow();
+    if (!parent) {
+        parent = this;
+    }
+    QMessageBox::information(parent,"Link Error",errorstring);
 }
 
 void MainWindow::simulateLink(bool simulate) {

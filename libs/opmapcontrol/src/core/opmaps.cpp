@@ -39,7 +39,7 @@ namespace core {
     OPMaps::OPMaps():RetryLoadTile(2),useMemoryCache(true)
     {
         accessmode=AccessMode::ServerAndCache;
-        Language=LanguageType::PortuguesePortugal;
+        Language=LanguageType::English;
         LanguageStr=LanguageType().toShortString(Language);
         Cache::Instance();
 
@@ -118,7 +118,6 @@ namespace core {
                 connect(&network, SIGNAL(finished(QNetworkReply*)),
                         &q, SLOT(quit()));
                 connect(&tT, SIGNAL(timeout()), &q, SLOT(quit()));
-                network.setProxy(Proxy);
 #ifdef DEBUG_GMAPS
                 qDebug()<<"Try Tile from the Internet";
 #endif //DEBUG_GMAPS
@@ -221,6 +220,9 @@ namespace core {
                 tT.stop();
                 if( (reply->error()!=QNetworkReply::NoError))
                 {
+#ifdef DEBUG_GMAPS
+                    qDebug() << " Download Tile Network error: " << reply->errorString();
+#endif
                     errorvars.lock();
                     ++diag.networkerrors;
                     errorvars.unlock();

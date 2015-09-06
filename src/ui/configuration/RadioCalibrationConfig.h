@@ -44,9 +44,10 @@ class RadioCalibrationConfig : public AP2ConfigWidget
 {
     Q_OBJECT
 
-    static const int RC_CHANNEL_PWM_MIN = 900.0;
+    static const int RC_CHANNEL_PWM_MIN = 850; // Spektrum DX6i reports 898 on ch7 even though its 6 channels
     static const int RC_CHANNEL_PWM_MAX = 2100;
     static const int RC_CHANNEL_NUM_MAX = 8;
+    static const int RC_CHANNEL_LOWER_CONTROL_CH_MAX = 4;
     
 public:
     explicit RadioCalibrationConfig(QWidget *parent = 0);

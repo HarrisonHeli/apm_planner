@@ -27,7 +27,7 @@ Rectangle {
     property alias backgroundColor : toolbar.color
     property alias uasNameLabel: currentUasName.label
     property alias linkNameLabel: linkDevice.label
-    property alias baudrateLabel: baudrate.label
+    property alias linkDetailLabel: linkDetail.label
     property bool connected: false
     property bool armed: false
     property string armedstr: "status"
@@ -67,6 +67,7 @@ Rectangle {
     function setAdvancedMode(state){
         // Enable ro disable buttons based on Adv mode.
         // ie. terminalView.visible = state
+        donateView.visible = !state;
     }
 
     function clearHighlightedButtons(){
@@ -177,6 +178,17 @@ Rectangle {
             onClicked: {
                 clearHighlightedButtons()
                 globalObj.triggerPlotView()
+                setSelected()
+            }
+        }
+
+        Button {
+            id: donateView
+            label: "DONATE"
+            image: "./resources/apmplanner/toolbar/flightdata.png"
+            onClicked: {
+                clearHighlightedButtons()
+                globalObj.triggerDonateView()
                 setSelected()
             }
         }
@@ -292,7 +304,7 @@ Rectangle {
         }
 
         TextButton {
-            id: baudrate
+            id: linkDetail
             label: "none"
             minWidth: 70
             enabled: !connectionWidget.disable

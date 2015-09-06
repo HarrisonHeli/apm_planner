@@ -151,7 +151,7 @@ QString ApmPlane::stringForMode(int aMode)
     case RESERVED_14:
         return "Reserved";
     default:
-        return "Undefined: " + QString::number(aMode);
+        return QString().sprintf("Mode (%d)", aMode);
     }
 }
 
@@ -191,7 +191,7 @@ QString ApmCopter::stringForMode(int aMode) {
         return "Circle";
         break;
     case POSITION:
-        return "Reserved"; // Marked as reserved as not supported since AC3.2
+        return QString().sprintf("Position (%d)", aMode);
         break;
     case LAND:
         return "Land";
@@ -217,8 +217,11 @@ QString ApmCopter::stringForMode(int aMode) {
     case FLIP:
         return "Flip";
         break;
+    case BRAKE:
+        return "Brake";
+        break;
     default:
-        return "Undefined";
+        return QString().sprintf("Mode (%d)", aMode);
     }
 }
 
@@ -266,9 +269,8 @@ QString ApmRover::stringForMode(int aMode) {
     case RESERVED_12:
     case RESERVED_13:
     case RESERVED_14:
-        return "Reserved";
     default:
-        return "Undefined";
+        return QString().sprintf("Mode (%d)", aMode);
     }
 }
 

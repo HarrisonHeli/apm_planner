@@ -50,6 +50,8 @@ public:
     void enableTimeouts();
     int getId() const;
     QString getName() const;
+    QString getShortName() const;
+    QString getDetail() const;
     void requestReset();
     bool isConnected() const;
     qint64 getConnectionSpeed() const;
@@ -90,7 +92,6 @@ public slots:
     bool setBaudRateString(QString baud);
 
 signals:
-    void updateLink(LinkInterface *link);
     void timeoutTriggered(LinkInterface*);
 
 private slots:

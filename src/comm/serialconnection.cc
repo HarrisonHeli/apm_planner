@@ -119,7 +119,7 @@ void SerialConnection::timeoutTimerTick()
 bool SerialConnection::setPortName(QString portName)
 {
     m_portName = portName;
-    emit updateLink(this);
+    emit linkChanged(this);
     writeSettings();
     return true;
 }
@@ -127,7 +127,7 @@ bool SerialConnection::setPortName(QString portName)
 bool SerialConnection::setBaudRate(int baud)
 {
     m_baud = baud;
-    emit updateLink(this);
+    emit linkChanged(this);
     writeSettings();
     return true;
 }
@@ -251,7 +251,7 @@ void SerialConnection::loadSettings()
     {
         m_baud = 115200;
     }
-    emit updateLink(this);
+    emit linkChanged(this);
 }
 void SerialConnection::writeSettings()
 {
@@ -286,7 +286,13 @@ bool SerialConnection::connect()
     QObject::connect(m_port, SIGNAL(error(QSerialPort::SerialPortError)),
                      this, SLOT(portError(QSerialPort::SerialPortError)), Qt::UniqueConnection);
 
+#ifdef Q_OS_MACX
+    // temp fix Qt5.4.1 issue on OSX
+    // http://code.qt.io/cgit/qt/qtserialport.git/commit/?id=687dfa9312c1ef4894c32a1966b8ac968110b71e
+    m_port->setPortName("/dev/cu." + m_portName);
+#else
     m_port->setPortName(m_portName);
+#endif
 
     if (!m_port->open(QIODevice::ReadWrite))
     {
@@ -384,6 +390,15 @@ QString SerialConnection::getName() const
     return m_portName;
 }
 
+QString SerialConnection::getShortName() const
+{
+    return m_portName;
+}
+
+QString SerialConnection::getDetail() const
+{
+    return QString::number(m_baud);
+}
 
 bool SerialConnection::isConnected() const
 {
@@ -441,10 +456,10 @@ bool SerialConnection::setBaudRateString(QString rate)
     bool ok;
     int intrate = rate.toInt(&ok);
     if (!ok) {
-        emit updateLink(this);
+        emit linkChanged(this);
         return false;
     }
-    emit updateLink(this);
+    emit linkChanged(this);
     return setBaudRate(intrate);
 
 }

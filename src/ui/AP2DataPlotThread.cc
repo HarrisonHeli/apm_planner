@@ -69,15 +69,8 @@ bool AP2DataPlotThread::isMainThread()
     return QThread::currentThread() == QCoreApplication::instance()->thread();
 }
 
-void AP2DataPlotThread::loadBinaryLog()
+void AP2DataPlotThread::loadBinaryLog(QFile &logfile)
 {
-    QFile logfile(m_fileName);
-    if (!logfile.open(QIODevice::ReadOnly))
-    {
-        emit error("Unable to open log file");
-        return;
-    }
-
     QByteArray block;
     int paramtype = -1;
     QMap<unsigned char,unsigned char> typeToLengthMap;
@@ -193,42 +186,42 @@ void AP2DataPlotThread::loadBinaryLog()
                                 {
                                     qint8 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val,'f',0);
+                                    linetoemit += "," + QString::number(static_cast<qint8>(val));
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val));
                                 }
                                 else if (typeCode == 'B') //uint8_t
                                 {
                                     quint8 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val,'f',0);
+                                    linetoemit += "," + QString::number(static_cast<quint8>(val));
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val));
                                 }
                                 else if (typeCode == 'h') //int16_t
                                 {
-                                    quint16 val;
+                                    qint16 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val,'f',0);
+                                    linetoemit += "," + QString::number(static_cast<qint16>(val));
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val));
                                 }
                                 else if (typeCode == 'H') //uint16_t
                                 {
                                     quint16 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val,'f',0);
+                                    linetoemit += "," + QString::number(static_cast<quint16>(val));
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val));
                                 }
                                 else if (typeCode == 'i') //int32_t
                                 {
                                     qint32 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val,'f',0);
+                                    linetoemit += "," + QString::number(static_cast<qint32>(val));
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val));
                                 }
                                 else if (typeCode == 'I') //uint32_t
                                 {
                                     quint32 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val,'f',0);
+                                    linetoemit += "," + QString::number(static_cast<quint32>(val));
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val));
                                 }
                                 else if (typeCode == 'f') //float
@@ -288,42 +281,57 @@ void AP2DataPlotThread::loadBinaryLog()
                                 {
                                     qint16 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val / 100.0,'f',4);
+                                    linetoemit += "," + QString::number((val/100.0) , 'f', 4);
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val / 100.0));
                                 }
                                 else if (typeCode == 'C') //uint16_t * 100
                                 {
                                     quint16 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val / 100.0,'f',4);
+                                    linetoemit += "," + QString::number((val/100.0) , 'f', 4);
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val / 100.0));
                                 }
                                 else if (typeCode == 'e') //int32_t * 100
                                 {
                                     qint32 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val / 100.0,'f',4);
+                                    linetoemit += "," + QString::number((val/100.0) , 'f', 4);
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val / 100.0));
                                 }
                                 else if (typeCode == 'E') //uint32_t * 100
                                 {
                                     quint32 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val / 100.0,'f',4);
+                                    linetoemit += "," + QString::number((val/100.0) , 'f', 4);
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val / 100.0));
                                 }
                                 else if (typeCode == 'L') //uint32_t GPS Lon/Lat * 10000000
                                 {
                                     qint32 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val / 10000000.0,'f',6);
+                                    double latLonValue = val/1e7;
+                                    linetoemit += "," + QString::number(latLonValue,'f',6);
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val / 10000000.0));
                                 }
                                 else if (typeCode == 'M')
                                 {
                                     qint8 val;
                                     packetstream >> val;
-                                    linetoemit += "," + QString::number(val,'f',0);
+                                    linetoemit += "," + QString::number(static_cast<qint8>(val));
+                                    valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val));
+                                }
+                                else if (typeCode == 'q')
+                                {
+                                    qint64 val;
+                                    packetstream >> val;
+                                    linetoemit += "," + QString::number(static_cast<qint64>(val));;
+                                    valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val));
+                                }
+                                else if (typeCode == 'Q')
+                                {
+                                    quint64 val;
+                                    packetstream >> val;
+                                    linetoemit += "," + QString::number(static_cast<quint64>(val));;
                                     valuepairlist.append(QPair<QString,QVariant>(labelstrsplit.at(j),val));
                                 }
                                 else
@@ -384,16 +392,8 @@ void AP2DataPlotThread::loadBinaryLog()
         return;
     }
 }
-void AP2DataPlotThread::loadAsciiLog()
+void AP2DataPlotThread::loadAsciiLog(QFile &logfile)
 {
-
-    QFile logfile(m_fileName);
-    if (!logfile.open(QIODevice::ReadOnly))
-    {
-        emit error("Unable to open log file");
-        return;
-    }
-
     m_loadedLogType = MAV_TYPE_GENERIC;
     int index = 500;
     QMap<QString,QString> nameToTypeString;
@@ -574,15 +574,8 @@ void AP2DataPlotThread::loadAsciiLog()
         return;
     }
 }
-void AP2DataPlotThread::loadTLog()
+void AP2DataPlotThread::loadTLog(QFile &logfile)
 {
-    QFile logfile(m_fileName);
-    if (!logfile.open(QIODevice::ReadOnly))
-    {
-        emit error("Unable to open log file");
-        return;
-    }
-
     m_loadedLogType = MAV_TYPE_GENERIC;
 
     int bytesize = 0;
@@ -770,20 +763,31 @@ void AP2DataPlotThread::run()
     emit startLoad();
     m_stop = false;
     m_errorCount = 0;
+    qint64 msecs = QDateTime::currentMSecsSinceEpoch();
+
+    QFile logfile(m_fileName);
+    if (!logfile.open(QIODevice::ReadOnly))
+    {
+        emit error("Unable to open log file ("  +  m_fileName + ")");
+        return;
+    }
+
+    QLOG_DEBUG() << "AP2DataPlotThread::run(): Log loading start -" << logfile.size() << "bytes";
+
     if (m_fileName.toLower().endsWith(".bin"))
     {
         //It's a binary file
-        loadBinaryLog();
+        loadBinaryLog(logfile);
     }
     else if (m_fileName.toLower().endsWith(".log"))
     {
         //It's a ascii log.
-        loadAsciiLog();
+        loadAsciiLog(logfile);
     }
     else if (m_fileName.toLower().endsWith(".tlog"))
     {
         //It's a tlog
-        loadTLog();
+        loadTLog(logfile);
     }
     else
     {
@@ -792,23 +796,14 @@ void AP2DataPlotThread::run()
     }
 
 
-    qint64 msecs = QDateTime::currentMSecsSinceEpoch();
-    QFile logfile(m_fileName);
-    if (!logfile.open(QIODevice::ReadOnly))
-    {
-        emit error("Unable to open log file");
-        return;
-    }
-
-    QLOG_DEBUG() << "AP2DataPlotThread::run(): Log loading finished, pos:" << logfile.pos() << "filesize:" << logfile.size();
     if (m_stop)
     {
-        QLOG_ERROR() << "Plot Log loading was canceled after" << (QDateTime::currentMSecsSinceEpoch() - msecs) / 1000.0 << "seconds";
+        QLOG_ERROR() << "Plot Log loading was canceled after" << (QDateTime::currentMSecsSinceEpoch() - msecs) / 1000.0 << "seconds -" << logfile.pos() << "of" << logfile.size() << "bytes";
         emit error("Log loading Canceled");
     }
     else
     {
-        QLOG_INFO() << "Plot Log loading took" << (QDateTime::currentMSecsSinceEpoch() - msecs) / 1000.0 << "seconds";
+        QLOG_INFO() << "Plot Log loading took" << (QDateTime::currentMSecsSinceEpoch() - msecs) / 1000.0 << "seconds -" << logfile.pos() << "of" << logfile.size() << "bytes used";
         emit done(m_errorCount,m_loadedLogType);
     }
 }

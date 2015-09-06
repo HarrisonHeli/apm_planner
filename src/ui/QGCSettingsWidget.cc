@@ -52,6 +52,11 @@ void QGCSettingsWidget::showEvent(QShowEvent *evt)
         ui->lowPowerCheckBox->setChecked(MainWindow::instance()->lowPowerModeEnabled());
         connect(ui->lowPowerCheckBox, SIGNAL(clicked(bool)), MainWindow::instance(), SLOT(enableLowPowerMode(bool)));
 
+        // Automatic use of system Proxies
+        ui->autoProxyCheckBox->setChecked(MainWindow::instance()->autoProxyModeEnabled());
+        connect(ui->autoProxyCheckBox, SIGNAL(clicked(bool)), MainWindow::instance(), SLOT(enableAutoProxyMode(bool)));
+        connect(MainWindow::instance(), SIGNAL(autoProxyChanged(bool)), ui->autoProxyCheckBox, SLOT(setChecked(bool)));
+
         //Dock widget title bars
         ui->titleBarCheckBox->setChecked(MainWindow::instance()->dockWidgetTitleBarsEnabled());
         connect(ui->titleBarCheckBox,SIGNAL(clicked(bool)),MainWindow::instance(),SLOT(enableDockWidgetTitleBars(bool)));
@@ -67,11 +72,13 @@ void QGCSettingsWidget::showEvent(QShowEvent *evt)
         ui->appDataDirEdit->setText((QGC::appDataDirectory()));
         ui->paramDirEdit->setText(QGC::parameterDirectory());
         ui->mavlinkLogDirEdit->setText((QGC::MAVLinkLogDirectory()));
+        ui->missionsDirEdit->setText((QGC::missionDirectory()));
 
         connect(ui->logDirSetButton, SIGNAL(clicked()), this, SLOT(setLogDir()));
         connect(ui->appDirSetButton, SIGNAL(clicked()), this, SLOT(setAppDataDir()));
         connect(ui->paramDirSetButton, SIGNAL(clicked()), this, SLOT(setParamDir()));
         connect(ui->mavlinkDirSetButton, SIGNAL(clicked()), this, SLOT(setMAVLinkLogDir()));
+        connect(ui->missionsSetButton, SIGNAL(clicked()), this, SLOT(setMissionsDir()));
 
         // Style
         MainWindow::QGC_MAINWINDOW_STYLE style = (MainWindow::QGC_MAINWINDOW_STYLE)MainWindow::instance()->getStyle();
@@ -120,7 +127,7 @@ QGCSettingsWidget::~QGCSettingsWidget()
 
 void QGCSettingsWidget::setLogDir()
 {
-    QFileDialog dlg(this);
+    QFileDialog dlg(this, "Set log output directory");
     dlg.setFileMode(QFileDialog::Directory);
     dlg.setDirectory(QGC::logDirectory());
 
@@ -134,7 +141,7 @@ void QGCSettingsWidget::setLogDir()
 
 void QGCSettingsWidget::setMAVLinkLogDir()
 {
-    QFileDialog dlg(this);
+    QFileDialog dlg(this, "Set tlog output directory");
     dlg.setFileMode(QFileDialog::Directory);
     dlg.setDirectory(QGC::MAVLinkLogDirectory());
 
@@ -148,7 +155,7 @@ void QGCSettingsWidget::setMAVLinkLogDir()
 
 void QGCSettingsWidget::setParamDir()
 {
-    QFileDialog dlg(this);
+    QFileDialog dlg(this, "Set parameters directory");
     dlg.setFileMode(QFileDialog::Directory);
     dlg.setDirectory(QGC::parameterDirectory());
 
@@ -162,7 +169,7 @@ void QGCSettingsWidget::setParamDir()
 
 void QGCSettingsWidget::setAppDataDir()
 {
-    QFileDialog dlg(this);
+    QFileDialog dlg(this, "Set application data directory");
     dlg.setFileMode(QFileDialog::Directory);
     dlg.setDirectory(QGC::appDataDirectory());
 
@@ -171,6 +178,20 @@ void QGCSettingsWidget::setAppDataDir()
         QString name = dir.absolutePath();
         QGC::setAppDataDirectory(name);
         ui->appDataDirEdit->setText(name);
+    }
+}
+
+void QGCSettingsWidget::setMissionsDir()
+{
+    QFileDialog dlg(this, "Set missions directory");
+    dlg.setFileMode(QFileDialog::Directory);
+    dlg.setDirectory(QGC::missionDirectory());
+
+    if(dlg.exec() ==  QDialog::Accepted) {
+        QDir dir = dlg.directory();
+        QString name = dir.absolutePath();
+        QGC::setMissionDirectory(name);
+        ui->missionsDirEdit->setText(name);
     }
 }
 

@@ -54,6 +54,16 @@ APMToolBar::APMToolBar(QWindow *parent):
     engine()->addImportPath(QGC::shareDirectory() +"/qml"); //For installed linux builds
     setSource(url);
     QLOG_DEBUG() << "QML Status:" << status();
+    if (status() == QQuickView::Error)
+    {
+        QString errorstr = "";
+        for (int i=0;i<errors().size();i++)
+        {
+            errorstr += errors().at(i).toString() + "\n";
+        }
+        QMessageBox::information(0,"Error", "Unable to load ApmToolbar.qml. Please reinstall the application and try again. Errors are as follows:\n" + errorstr);
+        return;
+    }
     setResizeMode(QQuickView::SizeRootObjectToView);
     this->rootContext()->setContextProperty("globalObj", this);
 
@@ -86,6 +96,8 @@ APMToolBar::APMToolBar(QWindow *parent):
        QMetaObject::invokeMethod(rootObject(),"setAdvancedMode", Q_ARG(QVariant, settings.value("ADVANCED_MODE").toBool()));
     }
     connect(LinkManager::instance(),SIGNAL(linkChanged(int)),this,SLOT(updateLinkDisplay(int)));
+
+    connect(this, SIGNAL(triggerDonateView()), this, SLOT(selectDonateView()));
 }
 
 void APMToolBar::checkAdvancedMode(bool checked)
@@ -119,8 +131,6 @@ void APMToolBar::activeUasSet(UASInterface *uas)
 
     // [TODO} Add active MAV to diplay here
     m_uas = uas;
-
-
 
     connect(m_uas,SIGNAL(armingChanged(bool)),
             this,SLOT(armingChanged(bool)));
@@ -161,14 +171,10 @@ void APMToolBar::activeUasSet(UASInterface *uas)
         {
             if (LinkManager::instance()->getLinkConnected(linkidlist.at(i)))
             {
-                //This link is connected
-                if (LinkManager::instance()->getLinkType(linkidlist.at(i)) == LinkInterface::SERIAL_LINK)
-                {
-                    //We only want to attach the toolbar to a serial link.
-                    m_currentLinkId = linkidlist.at(i);
-                    updateLinkDisplay(m_currentLinkId);
-                    break;
-                }
+                // Show only the first actve link for a UAS
+                m_currentLinkId = linkidlist.at(i);
+                updateLinkDisplay(m_currentLinkId);
+                break;
             }
         }
     }
@@ -209,6 +215,11 @@ void APMToolBar::setPlotViewAction(QAction *action)
     connect(this, SIGNAL(triggerPlotView()), action, SIGNAL(triggered()));
 }
 
+void APMToolBar::setDonateViewAction(QAction *action)
+{
+    connect(action, SIGNAL(triggered()), this, SLOT(selectDonateView()));
+}
+
 void APMToolBar::setSimulationViewAction(QAction *action)
 {
     connect(this, SIGNAL(triggerSimulationView()), action, SIGNAL(triggered()));
@@ -246,6 +257,13 @@ void APMToolBar::selectConfigTuningView()
 void APMToolBar::selectSimulationView()
 {
     QLOG_DEBUG() << "APMToolBar: selectSimulationView";
+}
+
+void APMToolBar::selectDonateView()
+{
+    QLOG_DEBUG() << "APMToolBar: selectDonateView";
+    QString donateUrl = "https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=UKV3U28LVDGN4";
+    QDesktopServices::openUrl(QUrl(donateUrl));
 }
 
 void APMToolBar::selectPlotView()
@@ -302,19 +320,23 @@ void APMToolBar::updateLinkDisplay(int linkid)
         QLOG_TRACE() << "APMToolBar::updateLinkDisplay called with non current link. Current:" << m_currentLinkId << "called:" << linkid;
         return;
     }
-    QString port = LinkManager::instance()->getSerialLinkPort(linkid);
-    int baud = LinkManager::instance()->getSerialLinkBaud(linkid);
-    bool connected = LinkManager::instance()->getLinkConnected(linkid);
+
     QObject *object = rootObject();
     if (!object)
     {
-        QLOG_FATAL() << "APMToolBar::updateLinkDisplay, null QML root object. FIXME";
+        QLOG_FATAL() << "APMToolBar::updateLinkDisplay, null QML root object.";
         return;
     }
-    object->setProperty("baudrateLabel", QString::number(baud));
-    object->setProperty("linkNameLabel", port);
+    LinkManager* lm = LinkManager::instance();
+    QString linkName = lm->getLinkShortName(linkid);
+    QString linkDetail = lm->getLinkDetail(linkid);
+
+    object->setProperty("linkDetailLabel", linkDetail);
+    object->setProperty("linkNameLabel", linkName);
+
+    bool connected = LinkManager::instance()->getLinkConnected(linkid);
     setConnection(connected);
-    QLOG_DEBUG() << "APMToolBar: updateLinkDisplay" << port << baud << connected;
+    QLOG_DEBUG() << "APMToolBar: updateLinkDisplay" << linkName <<":"<< linkDetail <<" connected:" << connected;
 }
 
 void APMToolBar::newLinkCreated(int linkid)

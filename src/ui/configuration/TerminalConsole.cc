@@ -121,7 +121,7 @@ void TerminalConsole::fillPortsInfo(QComboBox &comboBox)
 
         int found = comboBox.findData(list);
         if (found == -1) {
-            // QLOG_INFO() << "Inserting " << list.first();
+            QLOG_INFO() << "Inserting " << list.first();
             comboBox.insertItem(0,list[0], list);
         } else {
             // Do nothing as the port is already listed
@@ -200,7 +200,13 @@ void TerminalConsole::logsButtonClicked() {
 
 void TerminalConsole::openSerialPort(const SerialSettings &settings)
 {
+#ifdef Q_OS_MACX
+    // temp fix Qt5.4.1 issue on OSX
+    // http://code.qt.io/cgit/qt/qtserialport.git/commit/?id=687dfa9312c1ef4894c32a1966b8ac968110b71e
+    m_serial->setPortName("/dev/cu." + settings.name);
+#else
     m_serial->setPortName(settings.name);
+#endif
     if (m_serial->open(QIODevice::ReadWrite)) {
         if (m_serial->setBaudRate(settings.baudRate)
                 && m_serial->setDataBits(settings.dataBits)

@@ -51,6 +51,7 @@ public:
         SERIAL_LINK,
         TCP_LINK,
         UDP_LINK,
+        UDP_CLIENT_LINK,
         SIM_LINK,
         UNKNOWN_LINK
     };
@@ -78,6 +79,16 @@ public:
      * @brief Get the human readable name of this link
      */
     virtual QString getName() const = 0;
+
+    /**
+     * @brief Get the human readable name of this link
+     */
+    virtual QString getShortName() const = 0;
+
+    /**
+     * @brief Get the detail of this link (ie. baud, ip addres etc)
+     */
+    virtual QString getDetail() const = 0;
 
     virtual void requestReset() = 0;
 
@@ -135,6 +146,7 @@ public:
     virtual qint64 bytesAvailable() = 0;
 
     virtual LinkType getLinkType() { return UNKNOWN_LINK; }
+
 
 public slots:
 
@@ -218,6 +230,12 @@ signals:
     void deleteLink(LinkInterface* const link);
 
     void error(LinkInterface* link,QString errorstring);
+
+    /**
+      * @brief Sends an update message when the link parameters are changed
+      *
+      */
+    void linkChanged(LinkInterface* link);
 
 protected:
 

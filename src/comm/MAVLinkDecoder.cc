@@ -82,19 +82,21 @@ MAVLinkDecoder::~MAVLinkDecoder()
 
 mavlink_field_info_t MAVLinkDecoder::getFieldInfo(QString msgname,QString fieldname)
 {
+    mavlink_field_info_t fieldInfo;
     for (int i=0;i<256;i++)
     {
         if (msgname == messageInfo[i].name)
         {
-            for (int j=0;j<messageInfo[i].num_fields;j++)
+            for (unsigned int j=0;j<messageInfo[i].num_fields;j++)
             {
                 if (fieldname == messageInfo[i].fields[j].name)
                 {
-                    return messageInfo[i].fields[j];
+                    fieldInfo = messageInfo[i].fields[j];
                 }
             }
         }
     }
+    return fieldInfo;
 }
 QString MAVLinkDecoder::getMessageName(uint8_t msgid)
 {
@@ -109,7 +111,7 @@ QList<QString> MAVLinkDecoder::getFieldList(QString msgname)
         if (msgname == messageInfo[i].name)
         {
 
-            for (int j=0;j<messageInfo[i].num_fields;j++)
+            for (unsigned int j=0;j<messageInfo[i].num_fields;j++)
             {
                 retval.append(messageInfo[i].fields[j].name);
             }
@@ -121,7 +123,7 @@ QList<QString> MAVLinkDecoder::getFieldList(QString msgname)
 
 void MAVLinkDecoder::sendMessage(mavlink_message_t msg)
 {
-
+    Q_UNUSED(msg);
 }
 
 
@@ -160,11 +162,27 @@ QList<QPair<QString,QVariant> > MAVLinkDecoder::receiveMessage(LinkInterface* li
         if (QString(messageInfo[msgid].fields[fieldid].name) == QString("time_boot_ms") && messageInfo[msgid].fields[fieldid].type == MAVLINK_TYPE_UINT32_T)
         {
             time = *((quint32*)(m+messageInfo[msgid].fields[fieldid].wire_offset));
+
+            QPair<QString,QVariant> fieldval;
+            fieldval.first = QString("M%1:%2.%3")
+                             .arg(message.sysid)
+                             .arg(messageInfo[msgid].name)
+                             .arg(messageInfo[msgid].fields[fieldid].name);
+            fieldval.second = time;
+            retval.append(fieldval);
         }
         else if (QString(messageInfo[msgid].fields[fieldid].name).contains("usec") && messageInfo[msgid].fields[fieldid].type == MAVLINK_TYPE_UINT64_T)
         {
             time = *((quint64*)(m+messageInfo[msgid].fields[fieldid].wire_offset));
             time = (time+500)/1000; // Scale to milliseconds, round up/down correctly
+
+            QPair<QString,QVariant> fieldval;
+            fieldval.first = QString("M%1:%2.%3")
+                             .arg(message.sysid)
+                             .arg(messageInfo[msgid].name)
+                             .arg(messageInfo[msgid].fields[fieldid].name);
+            fieldval.second = *((quint64*)(m+messageInfo[msgid].fields[fieldid].wire_offset));
+            retval.append(fieldval);
         }
         else
         {

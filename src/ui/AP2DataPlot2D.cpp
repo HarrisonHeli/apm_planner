@@ -391,11 +391,13 @@ void AP2DataPlot2D::plotMouseMove(QMouseEvent *evt)
         }
         else if (graph->data()->contains(key))
         {
-            newresult.append(m_graphClassMap.keys()[i] + ": " + QString::number(graph->data()->value(key).value,'f',4) + ((i == m_graphClassMap.keys().size()-1) ? "" : "\n"));
+            QString str = QString().sprintf( "%.4g", graph->data()->value(key).value);
+            newresult.append(m_graphClassMap.keys()[i] + ": " + str + ((i == m_graphClassMap.keys().size()-1) ? "" : "\n"));
         }
         else if (graph->data()->lowerBound(key) != graph->data()->constEnd())
         {
-            newresult.append(m_graphClassMap.keys()[i] + ": " + QString::number((graph->data()->lowerBound(key).value().value),'f',4) + ((i == m_graphClassMap.keys().size()-1) ? "" : "\n"));
+        	QString str = QString().sprintf( "%.4g", graph->data()->lowerBound(key).value().value);
+            newresult.append(m_graphClassMap.keys()[i] + ": " + str + ((i == m_graphClassMap.keys().size()-1) ? "" : "\n"));
         }
         else
         {
@@ -424,7 +426,10 @@ void AP2DataPlot2D::graphControlsButtonClicked()
         for (QMap<QString,Graph>::const_iterator i=m_graphClassMap.constBegin();i!=m_graphClassMap.constEnd();i++)
         {
             //m_axisGroupingDialog->addAxis(i.key(),i.value().axis->range().lower,i.value().axis->range().upper,i.value().axis->labelColor());
-            m_axisGroupingDialog->fullAxisUpdate(i.key(),i.value().axis->range().lower,i.value().axis->range().upper,i.value().isManualRange,i.value().isInGroup,i.value().groupName);
+            if (!i.key().toLower().contains("mode"))
+            {
+                m_axisGroupingDialog->fullAxisUpdate(i.key(),i.value().axis->range().lower,i.value().axis->range().upper,i.value().isManualRange,i.value().isInGroup,i.value().groupName);
+            }
         }
         return;
     }
@@ -433,7 +438,10 @@ void AP2DataPlot2D::graphControlsButtonClicked()
     connect(m_axisGroupingDialog,SIGNAL(graphColorsChanged(QMap<QString,QColor>)),this,SLOT(graphColorsChanged(QMap<QString,QColor>)));
     for (QMap<QString,Graph>::const_iterator i=m_graphClassMap.constBegin();i!=m_graphClassMap.constEnd();i++)
     {
-        m_axisGroupingDialog->addAxis(i.key(),i.value().axis->range().lower,i.value().axis->range().upper,i.value().axis->labelColor());
+        if (!i.key().toLower().contains("mode"))
+        {
+            m_axisGroupingDialog->addAxis(i.key(),i.value().axis->range().lower,i.value().axis->range().upper,i.value().axis->labelColor());
+        }
     }
     m_axisGroupingDialog->show();
     QApplication::postEvent(m_axisGroupingDialog, new QEvent(QEvent::Show));
@@ -941,7 +949,10 @@ void AP2DataPlot2D::itemEnabled(QString name)
 
         if (m_axisGroupingDialog)
         {
-            m_axisGroupingDialog->addAxis(name,axis->range().lower,axis->range().upper,color);
+            if (!name.toLower().contains("mode"))
+            {
+                m_axisGroupingDialog->addAxis(name,axis->range().lower,axis->range().upper,color);
+            }
         }
         mainGraph1->setPen(QPen(color, 1));
         Graph graph;
@@ -1029,7 +1040,10 @@ void AP2DataPlot2D::itemEnabled(QString name)
             }
             if (m_axisGroupingDialog)
             {
-                m_axisGroupingDialog->addAxis(name,axis->range().lower,axis->range().upper,color);
+                if (!name.toLower().contains("mode"))
+                {
+                    m_axisGroupingDialog->addAxis(name,axis->range().lower,axis->range().upper,color);
+                }
             }
             Graph graph;
             graph.axis = axis;
@@ -1250,21 +1264,27 @@ void AP2DataPlot2D::threadDone(int errors,MAV_TYPE type)
                 //It's an integer!
                 switch (type)
                 {
-                    case MAV_TYPE_QUADROTOR:
+                case MAV_TYPE_QUADROTOR:
+                case MAV_TYPE_HEXAROTOR:
+                case MAV_TYPE_OCTOROTOR:
+                case MAV_TYPE_HELICOPTER:
+                case MAV_TYPE_TRICOPTER:
                     {
                         mode = ApmCopter::stringForMode(modeint);
                     }
                     break;
-                    case MAV_TYPE_FIXED_WING:
+                case MAV_TYPE_FIXED_WING:
                     {
                         mode = ApmPlane::stringForMode(modeint);
                     }
                     break;
-                    case MAV_TYPE_GROUND_ROVER:
+                case MAV_TYPE_GROUND_ROVER:
                     {
                         mode = ApmRover::stringForMode(modeint);
                     }
                     break;
+                default:
+                    mode = QString().sprintf("Mode (%d)", modeint);
                 }
             }
             QLOG_DEBUG() << "Mode change at index" << index << "to" << mode;
@@ -1397,7 +1417,7 @@ void AP2DataPlot2D::exportDialogAccepted()
     progressDialog->show();
     QApplication::processEvents();
 
-    QString formatheader = "FMT, 128, 89, FMT, BBnNZ, Type,Length,Name,Format\r\n";
+    QString formatheader = "FMT, 128, 89, FMT, BBnNZ, Type,Length,Name,Format,Columns\r\n";
     QMap<QString,QList<QString> > fmtlist = m_tableModel->getFmtValues();
     for (QMap<QString,QList<QString> >::const_iterator i = fmtlist.constBegin();i!=fmtlist.constEnd();i++)
     {

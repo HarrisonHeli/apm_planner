@@ -52,8 +52,8 @@ ArduCopterPidConfig::ArduCopterPidConfig(QWidget *parent) : AP2ConfigWidget(pare
     connect(ui.rateRollIMAXSpinBox,SIGNAL(valueChanged(double)),this,SLOT(rateIMAXChanged(double)));
 
 
-    m_nameToBoxMap["STB_RLL_P"] = ui.stabilPitchPSpinBox;
-    m_nameToBoxMap["STB_PIT_P"] = ui.stabilRollPSpinBox;
+    m_nameToBoxMap["STB_RLL_P"] = ui.stabilRollPSpinBox;
+    m_nameToBoxMap["STB_PIT_P"] = ui.stabilPitchPSpinBox;
     m_nameToBoxMap["STB_YAW_P"] = ui.stabilYawPSpinBox;
     m_nameToBoxMap["HLD_LAT_P"] = ui.loiterPidPSpinBox;
 
@@ -87,10 +87,10 @@ ArduCopterPidConfig::ArduCopterPidConfig(QWidget *parent) : AP2ConfigWidget(pare
 
     m_nameToBoxMap["THR_ALT_P"] = ui.altitudeHoldPSpinBox;
 
-    m_nameToBoxMap["WPNAV_SPEED"] = ui.wpNavLoiterSpeedSpinBox;
+    m_nameToBoxMap["WPNAV_SPEED"] = ui.wpNavSpeedSpinBox;
     m_nameToBoxMap["WPNAV_RADIUS"] = ui.wpNavRadiusSpinBox;
     m_nameToBoxMap["WPNAV_SPEED_DN"] = ui.wpNavSpeedDownSpinBox;
-    m_nameToBoxMap["WPNAV_LOIT_SPEED"] = ui.wpNavSpeedSpinBox;
+    m_nameToBoxMap["WPNAV_LOIT_SPEED"] = ui.wpNavLoiterSpeedSpinBox;
     m_nameToBoxMap["WPNAV_SPEED_UP"] = ui.wpNavSpeedUpSpinBox;
 
     //m_nameToBoxMap["TUNE_HIGH"] = ui.ch6MaxSpinBox;

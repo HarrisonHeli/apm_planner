@@ -51,12 +51,13 @@ class TCPLink : public LinkInterface
     Q_OBJECT
 
 public:
-    TCPLink(QHostAddress hostAddress = QHostAddress::LocalHost, quint16 socketPort = 5760, bool asServer = false);
+    TCPLink(const QHostAddress& hostAddress, const QString& hostName, quint16 socketPort, bool asServer = false);
     ~TCPLink();
     void disableTimeouts() { }
     void enableTimeouts() { }
 
-    void setHostAddress(QHostAddress hostAddress);
+    void setHostAddress(const QHostAddress& hostAddress);
+    void setHostName(const QString &hostName);
 
     QHostAddress getHostAddress(void) const { return _hostAddress; }
     quint16 getPort(void) const { return _port; }
@@ -65,6 +66,8 @@ public:
     // LinkInterface methods
     virtual int     getId(void) const;
     virtual QString getName(void) const;
+    virtual QString getShortName(void) const;
+    virtual QString getDetail(void) const;
     virtual bool    isConnected(void) const;
     virtual bool    connect(void);
     virtual bool    disconnect(void);
@@ -78,7 +81,6 @@ public:
     LinkType getLinkType() { return TCP_LINK; }
 
 public slots:
-    void setHostAddress(const QString& hostAddress);
     void setPort(int port);
     void setAsServer(bool asServer);
 

@@ -63,9 +63,8 @@ Radio3DRConfig::Radio3DRConfig(QWidget *parent) : QWidget(parent),
 
     initConnections();
 
-    //Keep refreshing the serial port list
-    m_timer = new QTimer(this);
-    connect(m_timer,SIGNAL(timeout()),this,SLOT(populateSerialPorts()));
+    //connect timer for when refreshing the serial port list
+    connect(&m_timer,SIGNAL(timeout()),this,SLOT(populateSerialPorts()));
 }
 
 Radio3DRConfig::~Radio3DRConfig()
@@ -87,9 +86,12 @@ void Radio3DRConfig::addBaudComboBoxConfig(QComboBox *comboBox)
     comboBox->setCurrentIndex(2);
 }
 
-void Radio3DRConfig::fillPortsInfo(QComboBox &comboxBox)
+void Radio3DRConfig::fillPortsInfo(QComboBox &comboBox)
 {
     QLOG_TRACE() << "3DR Radio fillPortsInfo ";
+    QString current = comboBox.itemText(comboBox.currentIndex());
+    disconnect(&comboBox,SIGNAL(currentIndexChanged(int)),this,SLOT(setLink(int)));
+    comboBox.clear();
     foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts()) {
         QStringList list;
         list << info.portName()
@@ -99,14 +101,25 @@ void Radio3DRConfig::fillPortsInfo(QComboBox &comboxBox)
              << (info.vendorIdentifier() ? QString::number(info.vendorIdentifier(), 16) : QString())
              << (info.productIdentifier() ? QString::number(info.productIdentifier(), 16) : QString());
 
-        int found = comboxBox.findData(list);
+        int found = comboBox.findData(list);
         if ((found == -1)&& (info.manufacturer().contains("FTDI") || info.manufacturer().contains("Silicon Labs"))) {
             QLOG_INFO() << "Inserting " << list.first();
-            comboxBox.insertItem(0,list[0], list);
+            comboBox.insertItem(0,list[0], list);
         } else {
             // Do nothing as the port is already listed
         }
-    }}
+    }
+    for (int i=0;i<comboBox.count();i++)
+    {
+        if (comboBox.itemText(i) == current)
+        {
+            comboBox.setCurrentIndex(i);
+            break;
+        }
+    }
+    setLink(comboBox.currentIndex());
+    connect(&comboBox,SIGNAL(currentIndexChanged(int)),this,SLOT(setLink(int)));
+}
 
 void Radio3DRConfig::loadSavedSerialSettings()
 {
@@ -154,7 +167,7 @@ void Radio3DRConfig::showEvent(QShowEvent *event)
     Q_UNUSED(event);
     // Start refresh Timer
     QLOG_DEBUG() << "3DR Radio Start Serial Port Scanning";
-    m_timer->start(2000);
+    m_timer.start(RADIO3DR_UPDATE_PORT_TIME);
     loadSavedSerialSettings();
 
     MainWindow::instance()->toolBar().disableConnectWidget(true);
@@ -165,7 +178,7 @@ void Radio3DRConfig::hideEvent(QHideEvent *event)
     Q_UNUSED(event);
     // Stop the port list refeshing
     QLOG_DEBUG() << "3DR Radio Stop Serial Port Scanning";
-    m_timer->stop();
+    m_timer.stop();
     saveSerialSettings();
     QLOG_DEBUG() << "3DR Radio Remove Conenction to Serial Port";
     delete m_radioSettings;
@@ -249,7 +262,7 @@ void Radio3DRConfig::readRadioSettings()
     resetUI();
 
     if(m_radioSettings->openSerialPort(m_settings)){
-         m_timer->stop(); // Stop updatuing the ports combobox
+         m_timer.stop(); // Stop updatuing the ports combobox
 
         m_radioSettings->writeEscapeSeqeunce(); // Start Sate machine
     }

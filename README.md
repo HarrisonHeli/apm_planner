@@ -48,6 +48,8 @@ Linux
 
 Building on Linux (tested against Ubuntu 14.04 LTS):
 
+(**NOTE:** There is an error in 14.04LTS with libxcb crashing sometimes, try this [fix](https://gist.github.com/slimsag/a26d838ccc4480ce21bc))
+
 1) Install the required packages: 
 
 Be sure to run apt-get update first
@@ -57,7 +59,8 @@ sudo apt-get update
 sudo apt-get install git qt5-qmake qt5-default \
   qtscript5-dev libqt5webkit5-dev libqt5serialport5-dev \
   libqt5svg5-dev libsdl1.2-dev  libsndfile-dev \
-  flite1-dev libssl-dev libudev-dev libsdl2-dev
+  flite1-dev libssl-dev libudev-dev libsdl2-dev \
+  qtdeclarative5-qtquick2-plugin
 ```
 
 2) Clone the repository in your workspace:

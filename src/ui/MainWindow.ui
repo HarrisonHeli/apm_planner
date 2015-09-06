@@ -86,6 +86,7 @@
      <addaction name="actionSerial"/>
      <addaction name="actionTCP"/>
      <addaction name="actionUDP"/>
+     <addaction name="actionUDPClient"/>
     </widget>
     <addaction name="menuAdd_Link"/>
     <addaction name="separator"/>
@@ -111,6 +112,8 @@
     <addaction name="actionDeveloper_Credits"/>
     <addaction name="actionDebug_Console"/>
     <addaction name="actionCheck_For_Updates"/>
+    <addaction name="separator"/>
+    <addaction name="actionDonate"/>
     <addaction name="separator"/>
     <addaction name="actionAbout_APM_Planner_2_0"/>
    </widget>
@@ -586,6 +589,19 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+M</string>
+   </property>
+  </action>
+  <action name="actionUDPClient">
+   <property name="text">
+    <string>UDP Client</string>
+   </property>
+   <property name="toolTip">
+    <string>UDP Client</string>
+   </property>
+  </action>
+  <action name="actionDonate">
+   <property name="text">
+    <string>Donate</string>
    </property>
   </action>
  </widget>
