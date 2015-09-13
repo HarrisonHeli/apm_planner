@@ -45,7 +45,7 @@ namespace mapcontrol
         diagTimer(0),
         showDiag(true),
         diagGraphItem(0),
-        useOpenGL(false) //Was missing causing random values - AH
+        useOpenGL(true) //Was missing causing random values - AH
     {
         setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         core=new internals::Core;
@@ -237,6 +237,11 @@ namespace mapcontrol
         foreach(UAVItem* uav, this->UAVS)
         {
             delete uav;
+        }
+
+        foreach(QGraphicsItemGroup* wpLine, this->waypointLines) //just a test -AH
+        {
+            delete wpLine;
         }
 
         delete Home;
