@@ -37,10 +37,7 @@ This file is part of the APM_PLANNER project
 #include <QSqlQuery>
 #include <QSqlField>
 #include <QSqlError>
-<<<<<<< HEAD
-=======
 #include <QByteArray>
->>>>>>> 2.0.19-rc4
 #include <QDataStream>
 #include "MAVLinkDecoder.h"
 #include "QsLog.h"
