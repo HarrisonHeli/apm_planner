@@ -2702,7 +2702,7 @@ void UAS::requestParameter(int component, const QString& parameter)
 
     paramRequestQueue.append(p);
 
-    if(paramRequestQueue.size() == 1) {
+    if(paramRequestQueue.size() >= 1) {
        //requestNextParamFromQueue();
        QTimer::singleShot(0, this, SLOT(requestNextParamFromQueue()));
     }
