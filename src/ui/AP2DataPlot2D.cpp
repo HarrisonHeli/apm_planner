@@ -90,6 +90,7 @@ AP2DataPlot2D::AP2DataPlot2D(QWidget *parent,bool isIndependant) : QWidget(paren
     m_plot = new QCustomPlot(ui.widget);
     m_plot->setInteraction(QCP::iRangeDrag, true);
     m_plot->setInteraction(QCP::iRangeZoom, true);
+    m_plot->setNoAntialiasingOnDrag(true);
 
     connect(m_plot,SIGNAL(axisDoubleClick(QCPAxis*,QCPAxis::SelectablePart,QMouseEvent*)),this,SLOT(axisDoubleClick(QCPAxis*,QCPAxis::SelectablePart,QMouseEvent*)));
 
@@ -718,14 +719,14 @@ void AP2DataPlot2D::updateValue(const int uasId, const QString& name, const QStr
         m_onlineValueTimeoutList.append(QPair<qint64,double>(current + 1800000,msec));
         //This is 1 minute
         //m_onlineValueTimeoutList.append(QPair<qint64,double>(current + 60000,m_currentIndex));
-        if (m_onlineValueTimeoutList[0].first <= current)
-        {
-            for (QMap<QString,Graph>::const_iterator i = m_graphClassMap.constBegin();i!=m_graphClassMap.constEnd();i++)
-            {
-                i.value().graph->removeData(0,m_onlineValueTimeoutList[0].second);
-            }
-            m_onlineValueTimeoutList.removeAt(0);
-        }
+        //if (m_onlineValueTimeoutList[0].first <= current)
+        //{
+          //  for (QMap<QString,Graph>::const_iterator i = m_graphClassMap.constBegin();i!=m_graphClassMap.constEnd();i++)
+           // {
+            //    i.value().graph->removeData(0,m_onlineValueTimeoutList[0].second);
+            //}
+            //m_onlineValueTimeoutList.removeAt(0);
+        //}
         if (m_graphClassMap.value(propername).groupName != "" && m_graphClassMap.value(propername).groupName != "MANUAL")
         {
             //Current graph is in a group
@@ -758,10 +759,15 @@ void AP2DataPlot2D::updateValue(const int uasId, const QString& name, const QStr
                 m_axisGroupingDialog->updateAxis(propername,m_graphClassMap.value(propername).axis->range().lower,m_graphClassMap.value(propername).axis->range().upper);
             }
         }
+        //Harrisonheli
+        m_graphClassMap.value(propername).axis->setNumberPrecision(3);
+        m_graphClassMap.value(propername).axis->setNumberFormat("f");
+
         if (integer)
         {
             m_graphClassMap.value(propername).axis->setNumberPrecision(0);
         }
+
     }
     m_onlineValueMap[propername].append(QPair<double,double>(newmsec / 1000.0,value));
 }
