@@ -2703,11 +2703,6 @@ void UAS::requestParameter(int component, const QString& parameter)
     QPair<int,QString> p = QPair<int,QString>(component, parameter);
 
     paramRequestQueue.append(p);
-
-    if(paramRequestQueue.size() >= 1) {
-       //requestNextParamFromQueue();
-       QTimer::singleShot(0, this, SLOT(requestNextParamFromQueue()));
-    }
     m_parameterSendTimer.start();
 }
 
