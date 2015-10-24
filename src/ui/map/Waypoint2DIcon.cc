@@ -379,10 +379,10 @@ void Waypoint2DIcon::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
 
         painter->rotate(waypoint->getYaw());
         painter->setPen(penCameraFootprint);
-        painter->drawRect((0 - X_CameraFootprintPixels),(0 - Y_CameraFootprintPixels), (X_CameraFootprintPixels*2),(Y_CameraFootprintPixels*2));
+        painter->drawRect((0 - (X_CameraFootprintPixels/2)),(0 - (Y_CameraFootprintPixels/2)), X_CameraFootprintPixels,Y_CameraFootprintPixels);
 
         painter->setPen(penCameraOverlap);
-        painter->drawRect((0 - X_CameraOverlapPixels),(0 - Y_CameraOverlapPixels), (X_CameraOverlapPixels*2),(Y_CameraOverlapPixels*2));
+        painter->drawRect((0 - (X_CameraOverlapPixels/2)),(0 - (Y_CameraOverlapPixels/2)), X_CameraOverlapPixels,Y_CameraOverlapPixels);
 
     }
 
