@@ -35,7 +35,8 @@ This file is part of the APM_PLANNER project
 #include <QSqlError>
 #include <QUuid>
 #include <QsLog.h>
-#include <ArduPilotMegaMAV.h>
+
+
 /*
  * This model holds everything in memory in a sqlite database.
  * There are two system tables, then unlimited number of message tables.
@@ -327,7 +328,7 @@ QMap<quint64,QString> AP2DataPlot2DModel::getModeValues()
             }
         }
         bool ok = false;
-        int modeint = mode.toInt(&ok);
+
         if (!ok && !custom_mode)
         {
             if (record.contains("ModeNum"))
@@ -349,6 +350,42 @@ QMap<quint64,QString> AP2DataPlot2DModel::getModeValues()
     }
     return retval;
 }
+
+
+QMap<quint64,ErrorType> AP2DataPlot2DModel::getErrorValues()
+{
+    QMap<quint64,ErrorType> retval;
+    QSqlQuery errorquery(m_sharedDb);
+    errorquery.prepare("SELECT * FROM 'ERR';");
+    if (errorquery.exec())
+    {
+        ErrorType lastErr;
+        while (errorquery.next())
+        {
+            QSqlRecord record = errorquery.record();
+            quint64 index = static_cast<quint64>(record.value(0).toLongLong());
+            ErrorType error;
+
+            if (!error.setFromSqlRecord(record))
+            {
+                QLOG_DEBUG() << "Not all data could be read from SQL-Record. Schema mismatch?!";
+            }
+            if (lastErr != error)
+            {
+                retval.insert(index,error);
+                lastErr = error;
+            }
+        }
+    }
+    else
+    {
+        //Errorquery returned no result - No error?
+        QLOG_DEBUG() << "Graph loaded with no error table. This is perfect!";
+    }
+
+    return retval;
+}
+
 
 QVariant AP2DataPlot2DModel::headerData ( int section, Qt::Orientation orientation, int role) const
 {
@@ -380,10 +417,12 @@ QVariant AP2DataPlot2DModel::headerData ( int section, Qt::Orientation orientati
 }
 int AP2DataPlot2DModel::rowCount( const QModelIndex & parent) const
 {
-     return m_rowCount;
+    Q_UNUSED(parent)
+    return m_rowCount;
 }
 int AP2DataPlot2DModel::columnCount ( const QModelIndex & parent) const
 {
+    Q_UNUSED(parent)
     return m_columnCount;
 }
 QVariant AP2DataPlot2DModel::data ( const QModelIndex & index, int role) const
@@ -445,8 +484,71 @@ QVariant AP2DataPlot2DModel::data ( const QModelIndex & index, int role) const
     }
     return tablequery.value((index.column()-1));
 }
+
+QVariant AP2DataPlot2DModel::dataFromPrefetchedRow(const QModelIndex &index)
+{
+    // Check whether its the same row as used for the prefetch call
+    // and if size is at least 1
+    if ((index.row() == m_prefetchedRowIndex.row()) && (m_prefetchedRowData.size() >= 1))
+    {
+        if (index.column() == 0)
+        {
+            return m_prefetchedRowData[0];
+        }
+        if (index.column() == 1)
+        {
+            return m_rowToTableMap.value(index.row()).second; // returns Tablename
+        }
+        if ((index.column()-1) >= m_prefetchedRowData.size())
+        {
+            return QVariant();
+        }
+        return m_prefetchedRowData[index.column()-1];
+    }
+    return QVariant();
+}
+
+bool AP2DataPlot2DModel::prefetchRow(const QModelIndex& index)
+{
+    bool retval = false;
+    m_prefetchedRowData.clear();
+
+    if (index.isValid())
+    {
+        if (m_rowToTableMap.contains(index.row()))
+        {
+            quint64 tableindex = m_rowToTableMap.value(index.row()).first;
+            QString tablename  = m_rowToTableMap.value(index.row()).second;
+
+            QSqlQuery tableQuery(m_sharedDb);
+            QString val = QString::number(tableindex);
+            tableQuery.prepare("SELECT * FROM " + tablename + " WHERE idx = " + val);
+            if (tableQuery.exec())
+            {
+                int recordCount = tableQuery.record().count();
+                if (!tableQuery.next())
+                {
+                    return false;
+                }
+                for (int i = 0; i < recordCount; ++i)
+                {
+                    m_prefetchedRowData.push_back(tableQuery.value(i));
+                }
+                retval = true;
+                m_prefetchedRowIndex = index;
+            }
+            else
+            {
+                qDebug() << "Unable to exec table query:" << tableQuery.lastError().text();
+            }
+        }
+    }
+    return retval;
+}
+
 void AP2DataPlot2DModel::selectedRowChanged(QModelIndex current,QModelIndex previous)
 {
+    Q_UNUSED(previous)
     if (m_currentRow == current.row())
     {
         return;
@@ -459,7 +561,6 @@ void AP2DataPlot2DModel::selectedRowChanged(QModelIndex current,QModelIndex prev
         return;
     }
     //Grab the index
-    int rowid = data(createIndex(current.row(),0)).toString().toInt();
 
     if (m_rowToTableMap.contains(current.row()))
     {
@@ -750,7 +851,7 @@ QString AP2DataPlot2DModel::makeCreateTableString(QString tablename, QString for
         }
         else
         {
-        QLOG_DEBUG() << "AP2DataPlotThread::makeCreateTableString(): NEW UNKNOWN VALUE" << typeCode;
+            QLOG_DEBUG() << "AP2DataPlotThread::makeCreateTableString(): NEW UNKNOWN VALUE" << typeCode;
         }
     }
     mktable.append(");");

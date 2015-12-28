@@ -36,7 +36,6 @@ This file is part of the APM_PLANNER project
 static const QString DEFAULT_FIRMWARE_TYPE = "stable";
 static const QString DEFAULT_AUTOPILOT_HW_TYPE = "";
 
-
 ApmFirmwareConfig::ApmFirmwareConfig(QWidget *parent) : AP2ConfigWidget(parent),
     m_throwPropSpinWarning(false),
     m_replugRequestMessageBox(0),
@@ -899,7 +898,7 @@ QString ApmFirmwareConfig::processPortInfo(const QSerialPortInfo &info)
             return "px4";
         }
         else if (info.productIdentifier() == 0x0011 || info.productIdentifier() == 0x0001
-                 || info.productIdentifier() == 0x0016) //0x0011 is the Pixhawk, 0x0001 is the bootloader.
+                 || info.productIdentifier() == 0x0016 || info.description().contains("FMU v2.x") ) //0x0011 is the Pixhawk, 0x0001 is the bootloader.
         {
             return "pixhawk";
         }
@@ -922,8 +921,10 @@ QString ApmFirmwareConfig::processPortInfo(const QSerialPortInfo &info)
 
 void ApmFirmwareConfig::firmwareListError(QNetworkReply::NetworkError error)
 {
-    QNetworkReply *reply = qobject_cast<QNetworkReply*>(sender());
-    QLOG_ERROR() << "Error!" << reply->errorString();
+    if (error != QNetworkReply::NoError) {
+        QNetworkReply *reply = qobject_cast<QNetworkReply*>(sender());
+        QLOG_ERROR() << "Error!" << reply->errorString();
+    }
 }
 
 bool ApmFirmwareConfig::stripVersionFromGitReply(QString url, QString reply,QString type,QString stable,QString *out)
@@ -1059,8 +1060,8 @@ bool ApmFirmwareConfig::versionIsGreaterThan(QString verstr,double version)
 
 bool ApmFirmwareConfig::compareVersionStrings(const QString& newVersion, const QString& currentVersion)
 {
-    int newMajor,newMinor,newBuild = 0;
-    int currentMajor, currentMinor,currentBuild = 0;
+    int newMajor = 0, newMinor = 0, newBuild = 0;
+    int currentMajor = 0, currentMinor = 0,currentBuild = 0;
 
     QString newBuildSubMoniker, oldBuildSubMoniker; // holds if the build is a rc or dev build
 

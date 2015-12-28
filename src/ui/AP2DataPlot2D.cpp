@@ -392,12 +392,12 @@ void AP2DataPlot2D::plotMouseMove(QMouseEvent *evt)
         }
         else if (graph->data()->contains(key))
         {
-            QString str = QString().sprintf( "%.4g", graph->data()->value(key).value);
+            QString str = QString().sprintf( "%.9g", graph->data()->value(key).value);
             newresult.append(m_graphClassMap.keys()[i] + ": " + str + ((i == m_graphClassMap.keys().size()-1) ? "" : "\n"));
         }
         else if (graph->data()->lowerBound(key) != graph->data()->constEnd())
         {
-        	QString str = QString().sprintf( "%.4g", graph->data()->lowerBound(key).value().value);
+        	QString str = QString().sprintf( "%.9g", graph->data()->lowerBound(key).value().value);
             newresult.append(m_graphClassMap.keys()[i] + ": " + str + ((i == m_graphClassMap.keys().size()-1) ? "" : "\n"));
         }
         else
@@ -774,7 +774,8 @@ void AP2DataPlot2D::updateValue(const int uasId, const QString& name, const QStr
 
 void AP2DataPlot2D::valueChanged(const int uasId, const QString& name, const QString& unit, const QVariant& value,const quint64 msec)
 {
-    if (value.type() == QVariant::Double || value.type() == QMetaType::Float)
+    QMetaType::Type metaType(static_cast<QMetaType::Type>(value.type()));
+    if (metaType == QMetaType::Double || metaType == QMetaType::Float)
     {
         updateValue(uasId,name,unit,value.toDouble(),msec,false);
     }
@@ -1298,6 +1299,77 @@ void AP2DataPlot2D::threadDone(int errors,MAV_TYPE type)
             m_graphClassMap["MODE"].modeMap[index] = mode;
         }
     }
+
+
+    QMap<quint64, ErrorType> error = m_tableModel->getErrorValues();
+    if (error.size() == 0)
+    {
+        QLOG_DEBUG() << "Graph loaded with no error table. Running anyway, but text error will not be available";
+    }
+    else
+    {
+        if (!m_graphClassMap.contains("ERR"))
+        {
+            QCPAxis *axis = m_wideAxisRect->addAxis(QCPAxis::atLeft);
+            axis->setVisible(false);
+            axis->setLabel("ERR");
+
+            if (m_graphCount > 0)
+            {
+                connect(m_wideAxisRect->axis(QCPAxis::atLeft,0),SIGNAL(rangeChanged(QCPRange)),axis,SLOT(setRange(QCPRange)));
+            }
+            QColor color = QColor::fromRgb(rand()%255,rand()%255,rand()%255);
+            axis->setLabelColor(color);
+            axis->setTickLabelColor(color);
+            axis->setTickLabelColor(color); // add an extra axis on the left and color its numbers
+            QCPGraph *mainGraph1 = m_plot->addGraph(m_wideAxisRect->axis(QCPAxis::atBottom), m_wideAxisRect->axis(QCPAxis::atLeft,m_graphCount++));
+            m_graphNameList.append("ERR");
+
+            mainGraph1->setPen(QPen(color, 1));
+            Graph graph;
+            graph.axis = axis;
+            graph.groupName = "";
+            graph.graph=  mainGraph1;
+            graph.isInGroup = false;
+            graph.isManualRange = false;
+            m_graphClassMap["ERR"] = graph;
+
+            mainGraph1->rescaleValueAxis();
+            if (m_graphCount == 1)
+            {
+                mainGraph1->rescaleKeyAxis();
+            }
+        }
+        for (QMap<quint64,ErrorType>::const_iterator i = error.constBegin(); i != error.constEnd(); i++)
+        {
+            quint64 index = i.key();
+            ErrorType err = i.value();
+
+            switch (m_loadedLogMavType)
+            {
+                case MAV_TYPE_QUADROTOR:
+                case MAV_TYPE_HEXAROTOR:
+                case MAV_TYPE_OCTOROTOR:
+                case MAV_TYPE_HELICOPTER:
+                case MAV_TYPE_TRICOPTER:
+                {
+                    QLOG_DEBUG() << "ERR change at index" << index << "to" << CopterErrorTypeFormatter::format(err);
+                    plotTextArrow(index, CopterErrorTypeFormatter::format(err), "ERR",ui.modeDisplayCheckBox);
+                    m_graphClassMap["ERR"].modeMap[index] = CopterErrorTypeFormatter::format(err);
+                    break;
+                }
+
+                default:
+                {
+                    QLOG_DEBUG() << "ERR change at index" << index << "to" << err.toString();
+                    plotTextArrow(index, err.toString(), "ERR",ui.modeDisplayCheckBox);
+                    m_graphClassMap["ERR"].modeMap[index] = err.toString();
+                    break;
+                }
+            }
+        }
+    }
+
     ui.verticalScrollBar->setValue(ui.verticalScrollBar->maximum());
 
     //m_tableModel = new AP2DataPlot2DModel(&m_sharedDb,this);
@@ -1434,21 +1506,29 @@ void AP2DataPlot2D::exportDialogAccepted()
             formatheader += line + "\r\n";
         }
     }
-
     outputfile.write(formatheader.toLatin1());
 
     for (int i=0;i<m_tableModel->rowCount();i++)
     {
         int j=1;
-        QVariant val = m_tableModel->data(m_tableModel->index(i,j++));
-        QString line = val.toString();
-        val = m_tableModel->data(m_tableModel->index(i,j++));
-        while (!val.isNull())
+        bool rowFetched = m_tableModel->prefetchRow(m_tableModel->index(i,j));
+
+        if (rowFetched)
         {
-            line += ", " + val.toString();
-            val = m_tableModel->data(m_tableModel->index(i,j++));
+            QVariant val = m_tableModel->dataFromPrefetchedRow(m_tableModel->index(i,j++));
+            QString line = val.toString();
+            val = m_tableModel->dataFromPrefetchedRow(m_tableModel->index(i,j++));
+            while (!val.isNull())
+            {
+                line += ", " + val.toString();
+                val = m_tableModel->dataFromPrefetchedRow(m_tableModel->index(i,j++));
+            }
+            outputfile.write(line.append("\r\n").toLatin1());
         }
-        outputfile.write(line.append("\r\n").toLatin1());
+        else
+        {
+            QLOG_DEBUG() << "AP2DataPlot2D::exportDialogAccepted: Row " << i << " could not be fetched.";
+        }
         if (i % 5)
         {
             progressDialog->setValue(100.0 * ((double)i / (double)m_tableModel->rowCount()));
