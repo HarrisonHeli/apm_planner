@@ -91,6 +91,12 @@ void DataSelectionScreen::disableItem(QString name)
     QLOG_ERROR() << "No item found in DataSelectionScreen:disableItem:" << name;
 }
 
+void DataSelectionScreen::disableAllItems()
+{
+    // Its like perssing the button
+    clearSelectionButtonClicked();
+}
+
 void DataSelectionScreen::addItem(QString name)
 {
     if (name.contains(":"))
@@ -128,6 +134,7 @@ void DataSelectionScreen::addItem(QString name)
 }
 void DataSelectionScreen::onItemChanged(QTreeWidgetItem* item,int column)
 {
+    Q_UNUSED(column)
     if (!item->parent())
     {
         return;

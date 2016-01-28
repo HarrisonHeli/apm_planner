@@ -58,17 +58,16 @@ AP2DataPlot2D::AP2DataPlot2D(QWidget *parent,bool isIndependant) : QWidget(paren
     m_plot(NULL),
     m_wideAxisRect(NULL),
     m_logLoaderThread(NULL),
-    m_model(NULL),
     m_logLoaded(false),
     m_currentIndex(0),
     m_startIndex(0),
     m_addGraphAction(NULL),
     m_uas(NULL),
-    m_progressDialog(NULL),
     m_axisGroupingDialog(NULL),
     m_tlogReplayEnabled(false),
     m_logDownloadDialog(NULL),
     m_droneshareUploadDialog(NULL),
+    m_useTimeOnX(false),
     m_loadedLogMavType(MAV_TYPE_ENUM_END),
     m_statusTextPos(0)
 {
@@ -98,6 +97,8 @@ AP2DataPlot2D::AP2DataPlot2D(QWidget *parent,bool isIndependant) : QWidget(paren
     connect(ui.modeDisplayCheckBox,SIGNAL(clicked(bool)),this,SLOT(modeCheckBoxClicked(bool)));
     connect(ui.errDisplayCheckBox,SIGNAL(clicked(bool)),this,SLOT(errCheckBoxClicked(bool)));
     connect(ui.evDisplayCheckBox,SIGNAL(clicked(bool)),this,SLOT(evCheckBoxClicked(bool)));
+    connect(ui.indexTypeCheckBox  ,SIGNAL(clicked(bool)),this,SLOT(indexTypeCheckBoxClicked(bool)));
+    ui.indexTypeCheckBox->setVisible(false);
 
     //ui.horizontalLayout_3->addWidget(m_plot);
     ui.verticalLayout_5->insertWidget(0,m_plot);
@@ -121,7 +122,6 @@ AP2DataPlot2D::AP2DataPlot2D(QWidget *parent,bool isIndependant) : QWidget(paren
     QCPMarginGroup *marginGroup = new QCPMarginGroup(m_plot);
     m_wideAxisRect->setMarginGroup(QCP::msLeft | QCP::msRight, marginGroup);
 
-    //m_dataSelectionScreen = new DataSelectionScreen(this);
     connect(ui.dataSelectionScreen,SIGNAL(itemEnabled(QString)),this,SLOT(itemEnabled(QString)));
     connect( ui.dataSelectionScreen,SIGNAL(itemDisabled(QString)),this,SLOT(itemDisabled(QString)));
 
@@ -147,12 +147,10 @@ AP2DataPlot2D::AP2DataPlot2D(QWidget *parent,bool isIndependant) : QWidget(paren
 
     connect(ui.loadOfflineLogButton,SIGNAL(clicked()),this,SLOT(loadButtonClicked()));
     connect(ui.autoScrollCheckBox,SIGNAL(clicked(bool)),this,SLOT(autoScrollClicked(bool)));
-    //connect(ui.hideExcelView,SIGNAL(clicked(bool)),ui.tableWidget,SLOT(setHidden(bool)));
     connect(ui.hideExcelView,SIGNAL(clicked(bool)),this,SLOT(setExcelViewHidden(bool)));
     connect(ui.tableWidget,SIGNAL(currentCellChanged(int,int,int,int)),this,SLOT(tableCellChanged(int,int,int,int)));
 
     connect(ui.graphControlsPushButton,SIGNAL(clicked()),this,SLOT(graphControlsButtonClicked()));
-    m_model = new QStandardItemModel();
     connect(ui.toKMLPushButton, SIGNAL(clicked()), this, SLOT(logToKmlClicked()));
     connect(ui.horizontalScrollBar,SIGNAL(sliderMoved(int)),this,SLOT(horizontalScrollMoved(int)));
 
@@ -170,8 +168,8 @@ AP2DataPlot2D::AP2DataPlot2D(QWidget *parent,bool isIndependant) : QWidget(paren
 
     ui.horizontalSplitter->setStretchFactor(0,20);
     ui.horizontalSplitter->setStretchFactor(1,1);
-
 }
+
 void AP2DataPlot2D::setExcelViewHidden(bool hidden)
 {
     if (hidden)
@@ -287,7 +285,8 @@ void AP2DataPlot2D::xAxisChanged(QCPRange range)
 
 void AP2DataPlot2D::horizontalScrollMoved(int value)
 {
-    if (qAbs(m_wideAxisRect->axis(QCPAxis::atBottom)->range().center()-value) > 0.01) // if user is dragging plot, we don't want to replot twice
+    double test = qAbs(m_wideAxisRect->axis(QCPAxis::atBottom)->range().center()-value);
+    if (test  > 1) // if user is dragging plot, we don't want to replot twice
     {
       m_wideAxisRect->axis(QCPAxis::atBottom)->setRange(value,m_wideAxisRect->axis(QCPAxis::atBottom)->range().size(), Qt::AlignCenter);
       m_plot->replot();
@@ -300,7 +299,7 @@ void AP2DataPlot2D::showEvent(QShowEvent *evt)
     {
         m_updateTimer->stop();
         m_updateTimer->deleteLater();
-        m_updateTimer = 0;
+        m_updateTimer = NULL;
     }
     m_updateTimer = new QTimer(this);
     connect(m_updateTimer,SIGNAL(timeout()),m_plot,SLOT(replot()));
@@ -314,7 +313,7 @@ void AP2DataPlot2D::hideEvent(QHideEvent *evt)
     {
         m_updateTimer->stop();
         m_updateTimer->deleteLater();
-        m_updateTimer = 0;
+        m_updateTimer = NULL;
     }
     QWidget::hideEvent(evt);
 }
@@ -347,7 +346,14 @@ void AP2DataPlot2D::plotMouseMove(QMouseEvent *evt)
         {
             if (m_logLoaded)
             {
-                newresult.append("Log Line: " + QString::number(key,'f',0) + "\n");
+                if (m_useTimeOnX)
+                {
+                    newresult.append("Time us: " + QString::number(key,'f',0) + "\n");
+                }
+                else
+                {
+                    newresult.append("Log Line: " + QString::number(key,'f',0) + "\n");
+                }
             }
             else
             {
@@ -391,12 +397,12 @@ void AP2DataPlot2D::plotMouseMove(QMouseEvent *evt)
         }
         else if (graph->data()->contains(key))
         {
-            QString str = QString().sprintf( "%.4g", graph->data()->value(key).value);
+            QString str = QString().sprintf( "%.9g", graph->data()->value(key).value);
             newresult.append(m_graphClassMap.keys()[i] + ": " + str + ((i == m_graphClassMap.keys().size()-1) ? "" : "\n"));
         }
         else if (graph->data()->lowerBound(key) != graph->data()->constEnd())
         {
-        	QString str = QString().sprintf( "%.4g", graph->data()->lowerBound(key).value().value);
+        	QString str = QString().sprintf( "%.9g", graph->data()->lowerBound(key).value().value);
             newresult.append(m_graphClassMap.keys()[i] + ": " + str + ((i == m_graphClassMap.keys().size()-1) ? "" : "\n"));
         }
         else
@@ -426,7 +432,9 @@ void AP2DataPlot2D::graphControlsButtonClicked()
         for (QMap<QString,Graph>::const_iterator i=m_graphClassMap.constBegin();i!=m_graphClassMap.constEnd();i++)
         {
             //m_axisGroupingDialog->addAxis(i.key(),i.value().axis->range().lower,i.value().axis->range().upper,i.value().axis->labelColor());
-            if (!i.key().toLower().contains("mode"))
+            if (!i.key().toLower().contains("mode") &&
+                !i.key().toLower().contains("err")  &&
+                !i.key().toLower().contains("ev"))
             {
                 m_axisGroupingDialog->fullAxisUpdate(i.key(),i.value().axis->range().lower,i.value().axis->range().upper,i.value().isManualRange,i.value().isInGroup,i.value().groupName);
             }
@@ -438,7 +446,9 @@ void AP2DataPlot2D::graphControlsButtonClicked()
     connect(m_axisGroupingDialog,SIGNAL(graphColorsChanged(QMap<QString,QColor>)),this,SLOT(graphColorsChanged(QMap<QString,QColor>)));
     for (QMap<QString,Graph>::const_iterator i=m_graphClassMap.constBegin();i!=m_graphClassMap.constEnd();i++)
     {
-        if (!i.key().toLower().contains("mode"))
+        if (!i.key().toLower().contains("mode") &&
+            !i.key().toLower().contains("err")  &&
+            !i.key().toLower().contains("ev"))
         {
             m_axisGroupingDialog->addAxis(i.key(),i.value().axis->range().lower,i.value().axis->range().upper,i.value().axis->labelColor());
         }
@@ -472,12 +482,12 @@ void AP2DataPlot2D::addGraphLeft()
 }
 void AP2DataPlot2D::selectedRowChanged(QModelIndex current,QModelIndex previous)
 {
-
-    m_tableModel->selectedRowChanged(m_tableFilterProxyModel->mapToSource(current),m_tableFilterProxyModel->mapToSource(previous));
-    if (ui.tableWidget->selectionModel()->selectedIndexes().size() == 0)
+    if (!current.isValid())
     {
         return;
     }
+    m_tableModel->selectedRowChanged(m_tableFilterProxyModel->mapToSource(current),m_tableFilterProxyModel->mapToSource(previous));
+
     if (current.column() == 0 || current.column() == 1)
     {
         //This is column 0 or 1, index and name
@@ -500,7 +510,7 @@ void AP2DataPlot2D::selectedRowChanged(QModelIndex current,QModelIndex previous)
             connect(m_addGraphAction,SIGNAL(triggered()),this,SLOT(showOnlyClicked()));
         }
     }
-    else
+    else if (ui.tableWidget->selectionModel()->selectedIndexes().size() != 0)
     {
         QString itemtext = ui.tableWidget->model()->itemData(ui.tableWidget->model()->index(current.row(),1)).value(Qt::DisplayRole).toString();
         QString headertext = ui.tableWidget->model()->headerData(current.column(),Qt::Horizontal,Qt::DisplayRole).toString();
@@ -543,6 +553,7 @@ void AP2DataPlot2D::removeGraphLeft()
     disconnect(m_addGraphAction,SIGNAL(triggered()),this,SLOT(showAllClicked()));
     connect(m_addGraphAction,SIGNAL(triggered()),this,SLOT(addGraphLeft())); //Add addgraphleft
 }
+
 void AP2DataPlot2D::showOnlyClicked()
 {
     if (ui.tableWidget->selectionModel()->selectedIndexes().size() == 0)
@@ -555,9 +566,10 @@ void AP2DataPlot2D::showOnlyClicked()
     m_tableFilterProxyModel->setFilterKeyColumn(1);
     m_showOnlyActive = true;
 }
+
 void AP2DataPlot2D::showAllClicked()
 {
-    m_tableFilterProxyModel->setFilterRegExp("");
+    disableTableFilter();
     m_showOnlyActive = false;
 }
 
@@ -768,7 +780,8 @@ void AP2DataPlot2D::updateValue(const int uasId, const QString& name, const QStr
 
 void AP2DataPlot2D::valueChanged(const int uasId, const QString& name, const QString& unit, const QVariant& value,const quint64 msec)
 {
-    if (value.type() == QVariant::Double || value.type() == QMetaType::Float)
+    QMetaType::Type metaType(static_cast<QMetaType::Type>(value.type()));
+    if (metaType == QMetaType::Double || metaType == QMetaType::Float)
     {
         updateValue(uasId,name,unit,value.toDouble(),msec,false);
     }
@@ -851,7 +864,7 @@ void AP2DataPlot2D::loadLog(QString filename)
     connect(m_logLoaderThread,SIGNAL(startLoad()),this,SLOT(loadStarted()));
     connect(m_logLoaderThread,SIGNAL(loadProgress(qint64,qint64)),this,SLOT(loadProgress(qint64,qint64)));
     connect(m_logLoaderThread,SIGNAL(error(QString)),this,SLOT(threadError(QString)));
-    connect(m_logLoaderThread,SIGNAL(done(int,MAV_TYPE)),this,SLOT(threadDone(int,MAV_TYPE)));
+    connect(m_logLoaderThread,SIGNAL(done(AP2DataPlotStatus,MAV_TYPE)),this,SLOT(threadDone(AP2DataPlotStatus,MAV_TYPE)));
     connect(m_logLoaderThread,SIGNAL(finished()),this,SLOT(threadTerminated()));
     connect(m_logLoaderThread,SIGNAL(payloadDecoded(int,QString,QVariantMap)),this,SLOT(payloadDecoded(int,QString,QVariantMap)));
     m_logLoaderThread->loadFile(filename);
@@ -866,6 +879,12 @@ void AP2DataPlot2D::threadTerminated()
 
 AP2DataPlot2D::~AP2DataPlot2D()
 {
+    if (m_updateTimer)
+    {
+        m_updateTimer->stop();
+        m_updateTimer->deleteLater();
+        m_updateTimer = NULL;
+    }
     if (m_logLoaderThread)
     {
         m_logLoaderThread->stopLoad();
@@ -878,15 +897,22 @@ AP2DataPlot2D::~AP2DataPlot2D()
         delete m_axisGroupingDialog;
         m_axisGroupingDialog = NULL;
     }
+    if(m_droneshareUploadDialog)
+    {
+        m_droneshareUploadDialog->hide();
+        m_droneshareUploadDialog->deleteLater();
+        m_droneshareUploadDialog = NULL;
+    }
 
     for (int i=0;i<m_childGraphList.size();i++)
     {
         m_childGraphList.at(i)->close();
     }
 
-    delete m_model;
-    m_model = NULL;
+    delete m_plot;
+    m_plot = NULL;
 }
+
 void AP2DataPlot2D::itemEnabled(QString name)
 {
     if (m_logLoaded)
@@ -907,7 +933,7 @@ void AP2DataPlot2D::itemEnabled(QString name)
         QList<QPair<double,QString> > strlist;
         QVector<double> xlist;
         QVector<double> ylist;
-        QMap<quint64,QVariant> values = m_tableModel->getValues(parent,child);
+        QMap<quint64,QVariant> values = m_tableModel->getValues(parent, child, m_useTimeOnX);
         if (values.size() == 0)
         {
             //No values!
@@ -931,32 +957,34 @@ void AP2DataPlot2D::itemEnabled(QString name)
             xlist.append(i.key());
 
         }
-        QCPAxis *axis = m_wideAxisRect->addAxis(QCPAxis::atLeft);
-        axis->setLabel(name);
+        QCPAxis *yAxis = m_wideAxisRect->addAxis(QCPAxis::atLeft);
+        yAxis->setLabel(name);
+        yAxis->setNumberFormat("gb");
 
         if (m_graphCount > 0)
         {
-            connect(m_wideAxisRect->axis(QCPAxis::atLeft,0),SIGNAL(rangeChanged(QCPRange)),axis,SLOT(setRange(QCPRange)));
+            connect(m_wideAxisRect->axis(QCPAxis::atLeft,0),SIGNAL(rangeChanged(QCPRange)),yAxis,SLOT(setRange(QCPRange)));
         }
         QColor color = QColor::fromRgb(rand()%255,rand()%255,rand()%255);
-        axis->setLabelColor(color);
-        axis->setTickLabelColor(color);
-        axis->setTickLabelColor(color); // add an extra axis on the left and color its numbers
+        yAxis->setLabelColor(color);
+        yAxis->setTickLabelColor(color);
+        yAxis->setTickLabelColor(color); // add an extra axis on the left and color its numbers
         QCPGraph *mainGraph1 = m_plot->addGraph(m_wideAxisRect->axis(QCPAxis::atBottom), m_wideAxisRect->axis(QCPAxis::atLeft,m_graphCount++));
         m_graphNameList.append(name);
         QCPAxis *xAxis = m_wideAxisRect->axis(QCPAxis::atBottom);
 
-
         if (m_axisGroupingDialog)
         {
-            if (!name.toLower().contains("mode"))
+            if (!name.toLower().contains("mode") &&
+                !name.toLower().contains("err")  &&
+                !name.toLower().contains("ev"))
             {
-                m_axisGroupingDialog->addAxis(name,axis->range().lower,axis->range().upper,color);
+                m_axisGroupingDialog->addAxis(name,yAxis->range().lower,yAxis->range().upper,color);
             }
         }
         mainGraph1->setPen(QPen(color, 1));
         Graph graph;
-        graph.axis = axis;
+        graph.axis = yAxis;
         graph.groupName = "";
         graph.graph=  mainGraph1;
         graph.isInGroup = false;
@@ -968,7 +996,7 @@ void AP2DataPlot2D::itemEnabled(QString name)
             {
                 QCPItemText *itemtext = new QCPItemText(m_plot);
                 itemtext->setText(strlist.at(i).second);
-                itemtext->position->setAxes(xAxis,axis);
+                itemtext->position->setAxes(xAxis,yAxis);
                 itemtext->position->setCoords(strlist.at(i).first,2.0);
                 m_plot->addItem(itemtext);
                 graph.itemList.append(itemtext);
@@ -976,9 +1004,9 @@ void AP2DataPlot2D::itemEnabled(QString name)
                 QCPItemLine *itemline = new QCPItemLine(m_plot);
                 graph.itemList.append(itemline);
                 itemline->start->setParentAnchor(itemtext->bottom);
-                itemline->start->setAxes(xAxis, axis);
+                itemline->start->setAxes(xAxis, yAxis);
                 itemline->start->setCoords(0.0, 0.0);
-                itemline->end->setAxes(xAxis, axis);
+                itemline->end->setAxes(xAxis, yAxis);
                 itemline->end->setCoords(strlist.at(i).first, 0.0);
                 itemline->setTail(QCPLineEnding::esDisc);
                 itemline->setHead(QCPLineEnding::esSpikeArrow);
@@ -1040,7 +1068,9 @@ void AP2DataPlot2D::itemEnabled(QString name)
             }
             if (m_axisGroupingDialog)
             {
-                if (!name.toLower().contains("mode"))
+                if (!name.toLower().contains("mode") &&
+                    !name.toLower().contains("err")  &&
+                    !name.toLower().contains("ev"))
                 {
                     m_axisGroupingDialog->addAxis(name,axis->range().lower,axis->range().upper,color);
                 }
@@ -1078,13 +1108,13 @@ void AP2DataPlot2D::itemDisabled(QString name)
     {
         m_axisGroupingDialog->removeAxis(name);
     }
-
 }
+
 void AP2DataPlot2D::progressDialogCanceled()
 {
     m_logLoaderThread->stopLoad();
-    this->close();
 }
+
 void AP2DataPlot2D::clearGraph()
 {
     //Clear the graph
@@ -1124,9 +1154,9 @@ void AP2DataPlot2D::clearGraph()
 
 void AP2DataPlot2D::loadStarted()
 {
-    m_progressDialog = new QProgressDialog("Loading File","Cancel",0,100,this);
+    m_progressDialog = QSharedPointer<QProgressDialog>(new QProgressDialog("Loading File","Cancel",0,100,this));
     m_progressDialog->setWindowModality(Qt::WindowModal);
-    connect(m_progressDialog,SIGNAL(canceled()),this,SLOT(progressDialogCanceled()));
+    connect(m_progressDialog.data(),SIGNAL(canceled()),this,SLOT(progressDialogCanceled()));
     m_progressDialog->show();
     QApplication::processEvents();
     //ui.tableWidget->clear();
@@ -1181,21 +1211,53 @@ void AP2DataPlot2D::plotTextArrow(int index, const QString &text, const QString&
     }
 }
 
-void AP2DataPlot2D::threadDone(int errors,MAV_TYPE type)
+
+void AP2DataPlot2D::removeTextArrows(const QString &graphName)
+{
+    if (m_graphClassMap.contains(graphName))
+    {
+        foreach (QCPAbstractItem *ptr, m_graphClassMap[graphName].itemList)
+        {
+            m_plot->removeItem(ptr);
+        }
+        m_graphClassMap[graphName].itemList.clear();
+    }
+}
+
+void AP2DataPlot2D::threadDone(AP2DataPlotStatus state, MAV_TYPE type)
 {
     m_loadedLogMavType = type;
 
-    if (errors != 0)
+    // Errorhandling
+    if (state.getParsingState() != AP2DataPlotStatus::OK)
     {
-        QMessageBox::information(this,"Warning","There were errors countered with " + QString::number(errors) + " lines in the log file. The data is potentially corrupt and incorrect");
+        QMessageBox msgBox;
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setWindowTitle("Warning");
+        msgBox.setText("Log parsing ended with errors.");
+
+        if (state.getParsingState() == AP2DataPlotStatus::FmtError)
+        {
+            msgBox.setInformativeText("There were errors only in format discription. Usually this is no problem.");
+        }
+        else if (state.getParsingState() == AP2DataPlotStatus::TruncationError)
+        {
+            msgBox.setInformativeText("The data was truncated!");
+        }
+        else
+        {
+            msgBox.setInformativeText("There were data errors / unreadable data in the log!"
+                                      " The data is potentially corrupt and incorrect.");
+        }
+        msgBox.setDefaultButton(QMessageBox::Ok);
+        msgBox.setDetailedText(state.getErrorText());
+        msgBox.exec();
     }
 
+    // First setup X-axis and scroller
+    setupXAxisAndScroller();
 
-    m_scrollStartIndex = m_tableModel->getFirstIndex();
-    m_scrollEndIndex = m_tableModel->getLastIndex();
-    ui.horizontalScrollBar->setMinimum(m_scrollStartIndex);
-    ui.horizontalScrollBar->setMaximum(m_scrollEndIndex);
-
+    // Insert data into tree view
     QMap<QString,QList<QString> > fmtlist = m_tableModel->getFmtValues();
     for (QMap<QString,QList<QString> >::const_iterator i=fmtlist.constBegin();i!=fmtlist.constEnd();i++)
     {
@@ -1210,116 +1272,72 @@ void AP2DataPlot2D::threadDone(int errors,MAV_TYPE type)
         ui.sortSelectTreeWidget->addTopLevelItem(child);
     }
 
-    QMap<quint64,QString> modes = m_tableModel->getModeValues();
-    if (modes.size() == 0)
-    {
-        QLOG_DEBUG() << "Graph loaded with no mode table. Running anyway, but text modes will not be available";
-    }
-    else
-    {
-        if (!m_graphClassMap.contains("MODE"))
-        {
-            QCPAxis *axis = m_wideAxisRect->addAxis(QCPAxis::atLeft);
-            axis->setVisible(false);
-            axis->setLabel("MODE");
+    // Setup basic graph for all arrow plots -> MODE/ERR/EV
+    QCPAxis *yAxis = m_wideAxisRect->addAxis(QCPAxis::atLeft);
+    yAxis->setVisible(false);
+    yAxis->setLabel("MODE/ERR/EV");
+    QCPGraph *mainGraph = m_plot->addGraph(m_wideAxisRect->axis(QCPAxis::atBottom), m_wideAxisRect->axis(QCPAxis::atLeft, m_graphCount++));
 
-            if (m_graphCount > 0)
-            {
-                connect(m_wideAxisRect->axis(QCPAxis::atLeft,0),SIGNAL(rangeChanged(QCPRange)),axis,SLOT(setRange(QCPRange)));
-            }
-            QColor color = QColor::fromRgb(rand()%255,rand()%255,rand()%255);
-            axis->setLabelColor(color);
-            axis->setTickLabelColor(color);
-            axis->setTickLabelColor(color); // add an extra axis on the left and color its numbers
-            QCPGraph *mainGraph1 = m_plot->addGraph(m_wideAxisRect->axis(QCPAxis::atBottom), m_wideAxisRect->axis(QCPAxis::atLeft,m_graphCount++));
-            m_graphNameList.append("MODE");
+    // Setup arrow plots. In a loaded log we always have MODE/ERR/EV
+    Graph graph;
+    graph.axis = yAxis;
+    graph.graph = mainGraph;
 
-            mainGraph1->setPen(QPen(color, 1));
-            Graph graph;
-            graph.axis = axis;
-            graph.groupName = "";
-            graph.graph=  mainGraph1;
-            graph.isInGroup = false;
-            graph.isManualRange = false;
-            m_graphClassMap["MODE"] = graph;
+    m_graphClassMap["MODE"] = graph;
+    m_graphNameList.append("MODE");
+    m_graphClassMap["ERR"] = graph;
+    m_graphNameList.append("ERR");
+    // EV is still missing
+//    m_graphClassMap["EV"] = graph;
+//    m_graphNameList.append("EV");
 
-            mainGraph1->rescaleValueAxis();
-            if (m_graphCount == 1)
-            {
-                mainGraph1->rescaleKeyAxis();
-            }
-        }
-        for (QMap<quint64,QString>::const_iterator i = modes.constBegin(); i != modes.constEnd(); i++)
-        {
-            quint64 index = i.key();
-            QString mode = i.value();
-            bool ok = false;
-            int modeint = mode.toInt(&ok);
-            if (!ok)
-            {
-                QLOG_DEBUG() << "Unable to determine Mode number in log" << mode;
-            }
-            else
-            {
-                //It's an integer!
-                switch (type)
-                {
-                case MAV_TYPE_QUADROTOR:
-                case MAV_TYPE_HEXAROTOR:
-                case MAV_TYPE_OCTOROTOR:
-                case MAV_TYPE_HELICOPTER:
-                case MAV_TYPE_TRICOPTER:
-                    {
-                        mode = ApmCopter::stringForMode(modeint);
-                    }
-                    break;
-                case MAV_TYPE_FIXED_WING:
-                    {
-                        mode = ApmPlane::stringForMode(modeint);
-                    }
-                    break;
-                case MAV_TYPE_GROUND_ROVER:
-                    {
-                        mode = ApmRover::stringForMode(modeint);
-                    }
-                    break;
-                default:
-                    mode = QString().sprintf("Mode (%d)", modeint);
-                }
-            }
-            QLOG_DEBUG() << "Mode change at index" << index << "to" << mode;
-            plotTextArrow(index, mode, "MODE",ui.modeDisplayCheckBox);
-            m_graphClassMap["MODE"].modeMap[index] = mode;
-        }
-    }
+    // Insert mode arrows
+    insertModeArrows();
+
+    // Insert Err arrows
+    insertErrArrows();
+
+    // Insert Ev arrows
+    // EV is still missing
+
+    // Rescale axis and remove zoom
+    mainGraph->rescaleValueAxis();
+    mainGraph->rescaleKeyAxis();
+    double requestedrange = static_cast<double>(m_scrollEndIndex - m_scrollStartIndex);
+    disconnect(ui.verticalScrollBar, SIGNAL(valueChanged(int)), this, SLOT(verticalScrollMoved(int)));
+    m_wideAxisRect->axis(QCPAxis::atBottom)->setRange(m_scrollStartIndex, requestedrange);
+    connect(ui.verticalScrollBar, SIGNAL(valueChanged(int)), this, SLOT(verticalScrollMoved(int)));
+    m_plot->replot();
+
     ui.verticalScrollBar->setValue(ui.verticalScrollBar->maximum());
 
-    //m_tableModel = new AP2DataPlot2DModel(&m_sharedDb,this);
+    // Set up proxy for table filtering
     m_tableFilterProxyModel = new QSortFilterProxyModel(this);
     m_tableFilterProxyModel->setSourceModel(m_tableModel);
     ui.tableWidget->setModel(m_tableFilterProxyModel);
     connect(ui.tableWidget->selectionModel(),SIGNAL(currentChanged(QModelIndex,QModelIndex)),this,SLOT(selectedRowChanged(QModelIndex,QModelIndex)));
 
-
-
     m_progressDialog->hide();
-    delete m_progressDialog;
-    m_progressDialog=0;
-    //ui.tableWidget->setVisible(true);
+    m_progressDialog.reset();
     setExcelViewHidden(false);
     ui.hideExcelView->setVisible(true);
     ui.sortShowPushButton->setVisible(true);
+    // the switch x axis check box shall only be active if model can handle timestamps
+    ui.indexTypeCheckBox->setVisible(m_tableModel->canUseTimeOnX());
 }
 
 
 void AP2DataPlot2D::threadError(QString errorstr)
 {
     QMessageBox::information(0,"Error",errorstr);
-    m_progressDialog->hide();
-    delete m_progressDialog;
-    m_progressDialog=0;
+    if (m_progressDialog)
+    {
+        m_progressDialog->hide();
+        m_progressDialog.reset();
+    }
     ui.dataSelectionScreen->clear();
     m_dataList.clear();
+    this->close();
 }
 
 void AP2DataPlot2D::payloadDecoded(int index,QString name,QVariantMap map)
@@ -1394,6 +1412,8 @@ void AP2DataPlot2D::exportButtonClicked()
 }
 void AP2DataPlot2D::exportDialogAccepted()
 {
+    QElapsedTimer timer1;
+    timer1.start();
     QFileDialog *dialog = qobject_cast<QFileDialog*>(sender());
     if (!dialog)
     {
@@ -1428,7 +1448,6 @@ void AP2DataPlot2D::exportDialogAccepted()
             formatheader += line + "\r\n";
         }
     }
-
     outputfile.write(formatheader.toLatin1());
 
     for (int i=0;i<m_tableModel->rowCount();i++)
@@ -1463,6 +1482,8 @@ void AP2DataPlot2D::exportDialogAccepted()
     progressDialog->hide();
     progressDialog->deleteLater();
     progressDialog=NULL;
+
+    QLOG_DEBUG() << "Log export took " << timer1.elapsed() << "ms";
 
 }
 
@@ -1502,6 +1523,38 @@ void AP2DataPlot2D::evCheckBoxClicked(bool checked)
         m_graphClassMap["EV"].itemList.at(i)->setVisible(checked);
     }
 }
+
+void AP2DataPlot2D::indexTypeCheckBoxClicked(bool checked)
+{
+    if (m_useTimeOnX != checked)
+    {
+        m_useTimeOnX = checked;
+        // we have to remove all graphs when changing x-axis...
+        ui.dataSelectionScreen->disableAllItems();
+
+        // ...and all arrows too
+        removeTextArrows("MODE");
+        removeTextArrows("ERR");
+        removeTextArrows("EV");
+
+        // arrows can be inserted instantly again
+        m_statusTextPos = 0;    // reset text arrow length
+        insertModeArrows();
+        insertErrArrows();
+        // EV is still missing
+
+        // Re -set x axis, scroller and zoom
+        setupXAxisAndScroller();
+        double requestedrange = static_cast<double>(m_scrollEndIndex - m_scrollStartIndex);
+        disconnect(ui.verticalScrollBar, SIGNAL(valueChanged(int)), this, SLOT(verticalScrollMoved(int)));
+        m_wideAxisRect->axis(QCPAxis::atBottom)->setRange(m_scrollStartIndex, requestedrange);
+        connect(ui.verticalScrollBar, SIGNAL(valueChanged(int)), this, SLOT(verticalScrollMoved(int)));
+        m_plot->replot();
+
+        ui.verticalScrollBar->setValue(ui.verticalScrollBar->maximum());
+    }
+}
+
 void AP2DataPlot2D::sortItemChanged(QTreeWidgetItem* item,int col)
 {
     Q_UNUSED(col)
@@ -1529,15 +1582,30 @@ void AP2DataPlot2D::sortItemChanged(QTreeWidgetItem* item,int col)
 void AP2DataPlot2D::sortAcceptClicked()
 {
     QString sortstring = "";
-    for (int i=0;i<m_tableFilterList.size();i++)
+    // All elements selected -> filter is disabled
+    if (ui.sortSelectTreeWidget->topLevelItemCount() == m_tableFilterList.size())
     {
-        sortstring += m_tableFilterList.at(i) + ((i == m_tableFilterList.size()-1) ? "" : "|");
+        disableTableFilter();
+        m_showOnlyActive = false;
     }
-    m_tableFilterProxyModel->setFilterRegExp(sortstring);
-    m_tableFilterProxyModel->setFilterRole(Qt::DisplayRole);
-    m_tableFilterProxyModel->setFilterKeyColumn(1);
+    // one or more elements selected -> RegEx must be used
+    else
+    {
+        // It is VERY important to disable the filtering prior to set up a new one
+        // If this is not done the regex filter gets terribly slow!!!
+        disableTableFilter();
+        for (int i=0;i<m_tableFilterList.size();i++)
+        {
+            sortstring += m_tableFilterList.at(i) + ((i == m_tableFilterList.size()-1) ? "" : "|");
+        }
+        m_tableFilterProxyModel->setFilterRegExp(sortstring);
+        m_tableFilterProxyModel->setFilterRole(Qt::DisplayRole);
+        m_tableFilterProxyModel->setFilterKeyColumn(1);
+    }
+
     ui.tableSortGroupBox->setVisible(false);
     ui.sortShowPushButton->setText("Show Sort");
+    m_showOnlyActive = true;
 }
 
 void AP2DataPlot2D::sortCancelClicked()
@@ -1628,3 +1696,130 @@ void AP2DataPlot2D::logToKmlClicked()
     }
 }
 
+void AP2DataPlot2D::disableTableFilter()
+{
+    // The order of the statements is important to be fast on huge logs (15MB)
+    // It does not really disable the filter but sets the rules to get a fast
+    // result without any filtering
+    m_tableFilterProxyModel->setFilterKeyColumn(0);
+    m_tableFilterProxyModel->setFilterRole(Qt::DisplayRole);
+    m_tableFilterProxyModel->setFilterFixedString("");
+}
+
+
+void AP2DataPlot2D::setupXAxisAndScroller()
+{
+    // Setup X-Axis for time or index formatting
+    QCPAxis *xAxis = m_wideAxisRect->axis(QCPAxis::atBottom);
+    xAxis->setNumberFormat("f");
+    xAxis->setNumberPrecision(0);
+    if (m_tableModel->canUseTimeOnX() && m_useTimeOnX)
+    {
+        m_scrollStartIndex = m_tableModel->getMinTime();
+        m_scrollEndIndex = m_tableModel->getMaxTime();
+        xAxis->setLabel("Time us");
+    }
+    else
+    {
+        m_scrollStartIndex = m_tableModel->getFirstIndex();
+        m_scrollEndIndex = m_tableModel->getLastIndex();
+        xAxis->setLabel("Index");
+    }
+    ui.horizontalScrollBar->setMinimum(m_scrollStartIndex);
+    ui.horizontalScrollBar->setMaximum(m_scrollEndIndex);
+}
+
+void AP2DataPlot2D::insertModeArrows()
+{
+    QMap<quint64,QString> modes = m_tableModel->getModeValues(m_useTimeOnX);
+    if (modes.size() == 0)
+    {
+        QLOG_DEBUG() << "Graph loaded with no mode table. Running anyway, but text modes will not be available";
+    }
+    else
+    {
+        for (QMap<quint64,QString>::const_iterator i = modes.constBegin(); i != modes.constEnd(); i++)
+        {
+            quint64 index = i.key();
+            QString mode = i.value();
+            bool ok = false;
+            int modeint = mode.toInt(&ok);
+            if (!ok)
+            {
+                QLOG_DEBUG() << "Unable to determine Mode number in log" << mode;
+            }
+            else
+            {
+                //It's an integer!
+                switch (m_loadedLogMavType)
+                {
+                    case MAV_TYPE_QUADROTOR:
+                    case MAV_TYPE_HEXAROTOR:
+                    case MAV_TYPE_OCTOROTOR:
+                    case MAV_TYPE_HELICOPTER:
+                    case MAV_TYPE_TRICOPTER:
+                    {
+                        mode = ApmCopter::stringForMode(modeint);
+                    }
+                    break;
+                    case MAV_TYPE_FIXED_WING:
+                    {
+                        mode = ApmPlane::stringForMode(modeint);
+                    }
+                    break;
+                    case MAV_TYPE_GROUND_ROVER:
+                    {
+                        mode = ApmRover::stringForMode(modeint);
+                    }
+                    break;
+
+                    default:
+                    mode = QString().sprintf("Mode (%d)", modeint);
+                }
+            }
+            QLOG_DEBUG() << "Mode change at index" << index << "to" << mode;
+            plotTextArrow(index, mode, "MODE",ui.modeDisplayCheckBox);
+            m_graphClassMap["MODE"].modeMap[index] = mode;
+        }
+    }
+}
+
+void AP2DataPlot2D::insertErrArrows()
+{
+    QMap<quint64, ErrorType> error = m_tableModel->getErrorValues(m_useTimeOnX);
+    if (error.size() == 0)
+    {
+        QLOG_DEBUG() << "Graph loaded with no error table. Running anyway, but text error will not be available";
+    }
+    else
+    {
+        for (QMap<quint64,ErrorType>::const_iterator i = error.constBegin(); i != error.constEnd(); i++)
+        {
+            quint64 index = i.key();
+            ErrorType err = i.value();
+
+            switch (m_loadedLogMavType)
+            {
+                case MAV_TYPE_QUADROTOR:
+                case MAV_TYPE_HEXAROTOR:
+                case MAV_TYPE_OCTOROTOR:
+                case MAV_TYPE_HELICOPTER:
+                case MAV_TYPE_TRICOPTER:
+                {
+                    QLOG_DEBUG() << "ERR change at index" << index << "to" << CopterErrorTypeFormatter::format(err);
+                    plotTextArrow(index, CopterErrorTypeFormatter::format(err), "ERR",ui.modeDisplayCheckBox);
+                    m_graphClassMap["ERR"].modeMap[index] = CopterErrorTypeFormatter::format(err);
+                    break;
+                }
+
+                default:
+                {
+                    QLOG_DEBUG() << "ERR change at index" << index << "to" << err.toString();
+                    plotTextArrow(index, err.toString(), "ERR",ui.modeDisplayCheckBox);
+                    m_graphClassMap["ERR"].modeMap[index] = err.toString();
+                    break;
+                }
+            }
+        }
+    }
+}
