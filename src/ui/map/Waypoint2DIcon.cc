@@ -355,8 +355,8 @@ void Waypoint2DIcon::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
 
     if (waypoint && showCameraFootprint)
     {
-        #define X_CAMERA_FOOTPRINT_METERS_AT_1M  1.4 //meters
-        #define Y_CAMERA_FOOTPRINT_METERS_AT_1M  0.8 //meters
+        #define X_CAMERA_FOOTPRINT_METERS_AT_1M  1.25 //meters
+        #define Y_CAMERA_FOOTPRINT_METERS_AT_1M  0.94 //meters
 
         #define X_CAMERA_OVERLAP  70 //percent
         #define Y_CAMERA_OVERLAP  70 //percent
