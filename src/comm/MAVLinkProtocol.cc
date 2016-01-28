@@ -238,6 +238,14 @@ void MAVLinkProtocol::handleMessage(quint64 timeid,LinkInterface *link)
     // If the matching UAS object does not yet exist, it has to be created
     // before emitting the packetReceived signal
 
+    if (message.sysid == 51)
+    {
+        qDebug() << "MAVLinkProtocol::handelMessage-> seen a radio message";
+        message.sysid = 1;
+        message.compid = 1;
+
+    }
+
     //UASInterface* uas = UASManager::instance()->getUASForId(message.sysid);
     Q_ASSERT_X(m_connectionManager != NULL, "MAVLinkProtocol::receiveBytes", " error:m_connectionManager == NULL");
     UASInterface* uas = m_connectionManager->getUas(message.sysid);

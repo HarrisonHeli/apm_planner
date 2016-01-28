@@ -298,36 +298,94 @@ void Waypoint2DIcon::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
 {
     Q_UNUSED(option);
     Q_UNUSED(widget);
+
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setRenderHint(QPainter::HighQualityAntialiasing, true);
+
     QPen pen = painter->pen();
     pen.setWidth(2);
     painter->drawPixmap(-picture.width()/2,-picture.height()/2,picture);
+
+    QPen penBlack = QPen(pen);
+    penBlack.setColor(Qt::black);
+    penBlack.setWidth(1);
+
+
     if (this->isSelected())
     {
         pen.setColor(Qt::yellow);
         painter->drawRect(QRectF(-picture.width()/2,-picture.height()/2,picture.width()-1,picture.height()-1));
     }
 
-    QPen penBlack(Qt::black);
-    penBlack.setWidth(4);
-    pen.setColor(color);
+    //Draw a safety radius around the wp to show the minimum distance the aircraft can be from people
+    bool showSafetyRadius = true;
 
-    //Draw a alignment radius around the wp for spacing when doing grids
-    bool showAlignmentRadius = true;
-    double AlignmentRadius = 30; //meters
-    double AlignmentRadiusLow = 15; //meters
-
-    if (waypoint && showAlignmentRadius)
+    if (waypoint && showSafetyRadius)
     {
+        #define MAX_SAFETY_RADIUS_METERS 30.0 //When at 0 AGL
+        #define MIN_SAFETY_RADIUS_METERS 15.0 //When greater than 30m AGL - This accounts for GPS and Waypoint Error
+
+
+        double SafetyRadius = 0;
+
+        if (waypoint->getAltitude() < MAX_SAFETY_RADIUS_METERS)
+            {
+            //Use the right angle rule X = Square Root ( R^2 - y^2 )
+            SafetyRadius = sqrt((MAX_SAFETY_RADIUS_METERS * MAX_SAFETY_RADIUS_METERS) - (waypoint->getAltitude() * waypoint->getAltitude()));
+            }
+
+        if (SafetyRadius < MIN_SAFETY_RADIUS_METERS )
+            {
+            SafetyRadius = MIN_SAFETY_RADIUS_METERS;
+            }
+
+
         QPen penDash(Qt::blue);
-        penDash.setWidth(1);
+        penDash.setWidth(2);
         penDash.setStyle(Qt::DotLine);
-        const int AlignmentRadiusPixels = map->metersToPixels(AlignmentRadius, Coord());
-        const int AlignmentRadiusLowPixels = map->metersToPixels(AlignmentRadiusLow, Coord());
+        const int SafetyRadiusPixels = map->metersToPixels(SafetyRadius, Coord());
+
         painter->setPen(penDash);
-        painter->drawEllipse(QPointF(0, 0), AlignmentRadiusPixels, AlignmentRadiusPixels);
-        painter->drawEllipse(QPointF(0, 0), AlignmentRadiusLowPixels, AlignmentRadiusLowPixels);
+        painter->drawEllipse(QPointF(0, 0), SafetyRadiusPixels, SafetyRadiusPixels);
+        //painter->drawEllipse(QPointF(0, 0), SafetyRadiusPixels/2, SafetyRadiusPixels/2);
 
     }
+
+    bool showCameraFootprint = true;
+
+    if (waypoint && showCameraFootprint)
+    {
+        #define X_CAMERA_FOOTPRINT_METERS_AT_1M  1.25 //meters
+        #define Y_CAMERA_FOOTPRINT_METERS_AT_1M  0.94 //meters
+
+        #define X_CAMERA_OVERLAP  70 //percent
+        #define Y_CAMERA_OVERLAP  70 //percent
+
+        QPen penCameraFootprint(Qt::gray);
+        penCameraFootprint.setWidth(2);
+        penCameraFootprint.setStyle(Qt::DashDotDotLine);
+
+        QPen penCameraOverlap(Qt::white);
+        penCameraFootprint.setWidth(2);
+
+        double X_CameraFootprintMeters = waypoint->getAltitude() * X_CAMERA_FOOTPRINT_METERS_AT_1M;
+        double Y_CameraFootprintMeters = waypoint->getAltitude() * Y_CAMERA_FOOTPRINT_METERS_AT_1M;
+
+        const int X_CameraFootprintPixels = map->metersToPixels(X_CameraFootprintMeters, Coord());
+        const int Y_CameraFootprintPixels = map->metersToPixels(Y_CameraFootprintMeters, Coord());
+
+        const int X_CameraOverlapPixels = map->metersToPixels(X_CameraFootprintMeters * (100 - X_CAMERA_OVERLAP)/100, Coord());
+        const int Y_CameraOverlapPixels = map->metersToPixels(Y_CameraFootprintMeters * (100 - Y_CAMERA_OVERLAP)/100, Coord());
+
+        painter->rotate(waypoint->getYaw());
+        painter->setPen(penCameraFootprint);
+        painter->drawRect((0 - (X_CameraFootprintPixels/2)),(0 - (Y_CameraFootprintPixels/2)), X_CameraFootprintPixels,Y_CameraFootprintPixels);
+
+        painter->setPen(penCameraOverlap);
+        painter->drawRect((0 - (X_CameraOverlapPixels/2)),(0 - (Y_CameraOverlapPixels/2)), X_CameraOverlapPixels,Y_CameraOverlapPixels);
+
+    }
+
 
     if (waypoint && showAcceptanceRadius &&
            ( (waypoint->getAction() == (int)MAV_CMD_NAV_WAYPOINT)
@@ -336,7 +394,7 @@ void Waypoint2DIcon::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
         QPen yellowPen = QPen(pen);
         yellowPen.setColor(Qt::yellow);
         yellowPen.setWidth(1);
-        painter->setPen(yellowPen);
+
         const int acceptance = map->metersToPixels(waypoint->getAcceptanceRadius(), Coord());
         if (acceptance <= 0)
             return;

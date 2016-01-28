@@ -11,6 +11,7 @@ JoystickWidget::JoystickWidget(JoystickInput* joystick, QWidget *parent) :
     QDialog(parent),
     m_ui(new Ui::JoystickWidget),
     m_buttonPressedMessage("")
+
 {
     m_ui->setupUi(this);
 

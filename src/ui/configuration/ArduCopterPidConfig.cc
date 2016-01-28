@@ -330,13 +330,16 @@ void ArduCopterPidConfig::refreshButtonClicked()
         showNullMAVErrorMessageBox();
         return;
     }
-    for (QMap<QString,QDoubleSpinBox*>::const_iterator i=m_nameToBoxMap.constBegin();i!=m_nameToBoxMap.constEnd();i++)
-    {
-        m_uas->getParamManager()->requestParameterUpdate(1,i.key());
-    }
+
     m_uas->getParamManager()->requestParameterUpdate(1,"TUNE");
     m_uas->getParamManager()->requestParameterUpdate(1,"CH7_OPT");
     m_uas->getParamManager()->requestParameterUpdate(1,"CH8_OPT");
     m_uas->getParamManager()->requestParameterUpdate(1,"TUNE_HIGH");
     m_uas->getParamManager()->requestParameterUpdate(1,"TUNE_LOW");
+
+    for (QMap<QString,QDoubleSpinBox*>::const_iterator i=m_nameToBoxMap.constBegin();i!=m_nameToBoxMap.constEnd();i++)
+    {
+        m_uas->getParamManager()->requestParameterUpdate(1,i.key());
+    }
+
 }
