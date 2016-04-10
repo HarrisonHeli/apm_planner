@@ -444,29 +444,38 @@ void WaypointList::changeCurrentWaypoint(quint16 seq)
 // Request UASWaypointManager to set the new "current" and make sure all other waypoints are not "current"
 void WaypointList::currentWaypointEditableChanged(quint16 seq)
 {
-        WPM->setCurrentEditable(seq);
-        const QList<Waypoint *> &waypoints = WPM->getWaypointEditableList();
+    WPM->setCurrentEditable(seq);
+    const QList<Waypoint *> &waypoints = WPM->getWaypointEditableList();
 
-        if (seq < waypoints.count())
+    if (seq < waypoints.count())
+    {
+        for(int i = 0; i < waypoints.count(); i++)
         {
-            for(int i = 0; i < waypoints.count(); i++)
+            QMap<Waypoint*, WaypointEditableView*>::ConstIterator iter = wpEditableViews.find(waypoints[i]);
+            if (iter != wpEditableViews.end())
             {
-                WaypointEditableView* widget = wpEditableViews.find(waypoints[i]).value();
-                if (!widget) continue;
-
-                if (waypoints[i]->getId() == seq)
+                WaypointEditableView* widget = iter.value();
+                if (widget)
                 {
-                    widget->setCurrent(true);
-                }
-                else
-                {
-                    widget->setCurrent(false);
+                    if (waypoints[i]->getId() == seq)
+                    {
+                        widget->setCurrent(true);
+                    }
+                    else
+                    {
+                        widget->setCurrent(false);
+                    }
                 }
             }
         }
+
         double Distance = getTotalDistanceInMeters();
         updateStatusLabel("Mission Distance:" + QString::number(Distance, 'f', 2) + " m");
+
+    }
+
 }
+
 
 // Update waypointViews to correctly indicate the new current waypoint
 void WaypointList::currentWaypointViewOnlyChanged(quint16 seq)
@@ -480,16 +489,21 @@ void WaypointList::currentWaypointViewOnlyChanged(quint16 seq)
     {
         for(int i = 0; i < waypoints.count(); i++)
         {
-            WaypointViewOnlyView* widget = wpViewOnlyViews.find(waypoints[i]).value();
-            if (!widget) continue;
-
-            if (waypoints[i]->getId() == seq)
+            QMap<Waypoint*, WaypointViewOnlyView*>::ConstIterator iter = wpViewOnlyViews.find(waypoints[i]);
+            if (iter != wpViewOnlyViews.end())
             {
-                widget->setCurrent(true);
-            }
-            else
-            {
-                widget->setCurrent(false);
+                WaypointViewOnlyView* widget = iter.value();
+                if (widget)
+                {
+                    if (waypoints[i]->getId() == seq)
+                    {
+                        widget->setCurrent(true);
+                    }
+                    else
+                    {
+                        widget->setCurrent(false);
+                    }
+                }
             }
         }
     }

@@ -34,7 +34,6 @@ This file is part of the APM_PLANNER project
 #include "MAVLinkDecoder.h"
 #include "kmlcreator.h"
 #include "qcustomplot.h"
-#include "DroneshareUploadDialog.h"
 
 #include "AP2DataPlotThread.h"
 #include "dataselectionscreen.h"
@@ -78,6 +77,10 @@ private slots:
     void loadButtonClicked();
     void loadDialogAccepted();
 
+    //settings
+    void saveSettings();
+    void loadSettings();
+
     //Graph loading thread started
     void loadStarted();
     //Progress of graph loading thread
@@ -113,14 +116,15 @@ private slots:
     void showOnlyClicked();
     void showAllClicked();
     void graphControlsButtonClicked();
+    void plotDoubleClick(QMouseEvent * _t2);
     void plotMouseMove(QMouseEvent *evt);
     void horizontalScrollMoved(int value);
     void verticalScrollMoved(int value);
     void xAxisChanged(QCPRange range);
     void replyTLogButtonClicked();
 
-    void droneshareButtonClicked();
-
+    void exportLogClicked();
+    void exportKmlClicked();
     void exportButtonClicked();
     void exportDialogAccepted();
 
@@ -131,6 +135,7 @@ private slots:
     void modeCheckBoxClicked(bool checked);
     void errCheckBoxClicked(bool checked);
     void evCheckBoxClicked(bool checked);
+    void msgCheckBoxClicked(bool checked);
     void indexTypeCheckBoxClicked(bool checked);
     void sortItemChanged(QTreeWidgetItem* item,int col);
     void sortAcceptClicked();
@@ -144,14 +149,23 @@ private slots:
     void setExcelViewHidden(bool hidden);
 
 private:
+
     void showEvent(QShowEvent *evt);
     void hideEvent(QHideEvent *evt);
     AP2DataPlot2DModel *m_tableModel;
     QSortFilterProxyModel *m_tableFilterProxyModel;
     QList<QString> m_tableFilterList;
     int getStatusTextPos();
-    void plotTextArrow(int index, const QString& text, const QString& graph, QCheckBox *checkBox = NULL);
+    void plotTextArrow(double index, const QString& text, const QString& graph, const QColor& color, QCheckBox *checkBox = NULL);
 
+    /**
+     * @brief This method hides or shows the text arrows of type
+     *        garphName by changing their visability. Used by
+     *        checkbox handlers.
+     * @param show - true - make visible / false - hide them
+     * @param type - typename of text arrows to hide or show
+     */
+    void hideShowTextArrows(bool show, const QString &graphName);
 
     /**
      * @brief This method disables the filtering of m_tableFilterProxyModel
@@ -174,16 +188,21 @@ private:
     void removeTextArrows(const QString &graphName);
 
     /**
-     * @brief insertModeArrows inserts mode text arrows into the graph
+     * @brief insertTextArrows inserts messages stored in m_indexToMessageMap
+     *        as text arrows into the graph
      *        Uses normal or time index regarding of the value of m_useTimeOnX
      */
-    void insertModeArrows();
+    void insertTextArrows();
 
     /**
-     * @brief insertErrArrows inserts error text arrows into the graph
-     *        Uses normal or time index regarding of the value of m_useTimeOnX
+     * @brief insertCurrentTime inserts a red line into the graph
      */
-    void insertErrArrows();
+    void insertCurrentIndex();
+
+    /**
+     * @brief plotCurrentTime updates the current time red line position
+     */
+    void plotCurrentIndex(double index);
 
 
 private:
@@ -200,7 +219,7 @@ private:
         QCPAxis *axis;
         QCPGraph *graph;
         QList<QCPAbstractItem*> itemList;
-        QMap<double,QString> modeMap;
+        QMap<double,QString> messageMap;
 
         Graph() : isManualRange(false), isInGroup(false), axisIndex(0), axis(NULL), graph(NULL){}
     };
@@ -247,14 +266,20 @@ private:
     qint64 m_scrollEndIndex; //Actual graph end
 
     LogDownloadDialog *m_logDownloadDialog;
-    DroneshareUploadDialog *m_droneshareUploadDialog;
-
-    bool m_useTimeOnX;  /// True if x axis uses time index
 
     MAV_TYPE m_loadedLogMavType;
 
     QString m_filename;
     int m_statusTextPos;
+
+    bool m_useTimeOnX;                      /// True if x axis uses time index
+    //red time line
+    QCPItemLine *m_timeLine;
+
+    QMap<quint64, MessageBase::Ptr> m_indexToMessageMap;    /// Map holding all Messages which are printed as arrows
+    int m_lastHorizontalScrollerVal;                        /// Used to avoid multiple calls with same value
+    bool m_KmlExport;                                       /// True if exporting to Kml
+
 };
 
 #endif // AP2DATAPLOT2D_H
